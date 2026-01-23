@@ -38,33 +38,44 @@ def main():
 
     # ===== simulate =====
     model = Bornholdt2D(L=L, J=J, alpha=alpha, T=T, seed=seed)
-    ts = model.run(n_sweeps=n_sweeps, burn_in=burn_in, thin=thin, return_mode=return_mode, eps=eps)
+    ts = model.run(
+        n_sweeps=n_sweeps,
+        burn_in=burn_in,
+        thin=thin,
+        return_mode=return_mode,
+        eps=eps
+    )
 
     M = ts["M"]
+    C_mean = ts["C_mean"]          # <-- NEW (for Fig. 5)
     r = ts["r"]
     abs_r = ts["abs_r"]
 
     # Align lengths for saving:
-    # M has length K; r/abs_r have length K-1
-    # We'll save t index for M and a separate t index for r.
+    # M and C_mean have length K; r/abs_r have length K-1
     k = len(M)
+    if len(C_mean) != k:
+        raise ValueError(f"Length mismatch: len(C_mean)={len(C_mean)} but len(M)={k}")
+
     t_M = np.arange(k)
     t_r = np.arange(k - 1)
 
     # Save timeseries.csv
-    # Columns: t_M, M, t_r, r, abs_r  (padded with empty for last row if needed)
+    # Columns: t_M, M, C_mean, t_r, r, abs_r  (pad last row for return columns)
     csv_path = os.path.join(out_dir, "timeseries.csv")
     with open(csv_path, "w", encoding="utf-8") as f:
-        f.write("t_M,M,t_r,r,abs_r\n")
+        f.write("t_M,M,C_mean,t_r,r,abs_r\n")
         for i in range(k):
             if i < k - 1:
-                f.write(f"{t_M[i]},{M[i]},{t_r[i]},{r[i]},{abs_r[i]}\n")
+                f.write(f"{t_M[i]},{M[i]},{C_mean[i]},{t_r[i]},{r[i]},{abs_r[i]}\n")
             else:
-                f.write(f"{t_M[i]},{M[i]},,,\n")
+                # last M,C_mean exist but no return at the last index
+                f.write(f"{t_M[i]},{M[i]},{C_mean[i]},,,\n")
 
     print(f"Saved: {csv_path}")
-    print(f"M samples: {len(M)} | r samples: {len(r)}")
+    print(f"M samples: {len(M)} | r samples: {len(r)} | C_mean samples: {len(C_mean)}")
 
 
 if __name__ == "__main__":
     main()
+

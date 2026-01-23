@@ -50,30 +50,40 @@ class Bornholdt2D:
     def _local_field(self, i: int, j: int, M: float):
         return self.J * self._neighbors_sum_S(i, j) - self.alpha * self.C[i, j] * M
     
-    def update_one_site(self):
+    def update_one_site(self): #UPDATED VERSION
+        #THERE WAS A DISCREPANCY BETWEEN THIS MODEL AND MODEL EXPLAIN IN THE BOOK, IT USED OLD MAGNETIZATION. 
+        #IF YOU WANT YOU CAN COMPARE THIS NEW MODEL WITH OLD MODEL; IN THE FOLDER "bornholdt"
         """
-        One random-site update:
-        1) compute current magnetization M
-        2) update S_ij with heat-bath probability using h_ij
-        3) update C_ij with switching rule
+        One random-site update (Option A):
+        1) compute current magnetization M_old
+        2) update S_ij with heat-bath using M_old
+        3) update magnetization to M_new (incremental, exact)
+        4) update C_ij using the new S_ij and new M_new
         """
         i = self.rng.integers(0, self.L)
         j = self.rng.integers(0, self.L)
 
-        M = self.magnetization()
-        h = self._local_field(i, j, M)
+        # 1) old magnetization
+        M_old = self.magnetization()
 
-        # Heat-bath: P(S=+1) = 1/(1+exp(-2*beta*h))
-        # Using the difference between new and old to update sumS efficiently
+        # Save old spin before update (needed for incremental M update)
+        S_old = self.S[i, j]
+
+        # 2) update S using local field computed with M_old
+        h = self._local_field(i, j, M_old)
         p_up = 1.0 / (1.0 + np.exp(-2.0 * self.beta * h))
-        old = self.S[i, j]
-        new = 1 if self.rng.random() < p_up else -1
-        if new != old:
-            self.S[i, j] = new
-            self.sumS += int(new - old)
+        S_new = 1 if self.rng.random() < p_up else -1
+        self.S[i, j] = S_new
+        
+        #Update sumS
+        self.sumS += (S_new - S_old)
 
-        # Strategy switching: flip C if C*S*M < 0
-        if self.C[i, j] * self.S[i, j] * M < 0:
+        # 3) compute new magnetization exactly, without recomputing mean(S)
+        # M = (1/N) sum S, so flipping one spin changes M by (S_new - S_old)/N
+        M_new = self.sumS / self.N
+
+        # 4) strategy switching using NEW S and NEW M
+        if self.C[i, j] * self.S[i, j] * M_new < 0:
             self.C[i, j] *= -1
     
     def sweep(self):
@@ -119,24 +129,6 @@ class Bornholdt2D:
         return_mode: str = "log_absM",
         eps: float = 1e-6,
     ):
-        """
-        Run simulation and collect time series.
-
-        Parameters
-        ----------
-        n_sweeps : total sweeps to execute (including burn-in)
-        burn_in  : number of initial sweeps to discard
-        thin     : keep one sample every 'thin' sweeps after burn-in
-        return_mode : "log_absM" (paper-like) or "diffM"
-        eps      : small constant to avoid log(0)
-
-        Returns
-        -------
-        dict with:
-          - "M": magnetization samples
-          - "r": returns aligned with M (length len(M)-1)
-          - "abs_r": |returns|
-        """
         if n_sweeps <= 0:
             raise ValueError("n_sweeps must be positive")
         if burn_in < 0 or burn_in >= n_sweeps:
@@ -145,6 +137,7 @@ class Bornholdt2D:
             raise ValueError("thin must be positive")
 
         Ms = []
+        Cs = []  # <-- add this
 
         for s in range(n_sweeps):
             self.sweep()
@@ -154,9 +147,12 @@ class Bornholdt2D:
 
             if ((s - burn_in) % thin) == 0:
                 Ms.append(self.magnetization())
+                Cs.append(float(self.C.mean()))  # <-- record mean strategy
 
         M_series = np.array(Ms, dtype=float)
+        C_series = np.array(Cs, dtype=float)  # <-- add this
+
         r_series = self.compute_returns_from_M(M_series, mode=return_mode, eps=eps)
         abs_r = np.abs(r_series)
 
-        return {"M": M_series, "r": r_series, "abs_r": abs_r}
+        return {"M": M_series, "C_mean": C_series, "r": r_series, "abs_r": abs_r}
