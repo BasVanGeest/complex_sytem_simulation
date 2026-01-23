@@ -48,6 +48,7 @@ class Bornholdt2D:
         return self.J * self._neighbors_sum_S(i, j) - self.alpha * self.C[i, j] * M
     
     def update_one_site(self):
+        #OLD UPDATE RULE; NOT CORRECTLY
         """
         One random-site update:
         1) compute current magnetization M
