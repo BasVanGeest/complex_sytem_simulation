@@ -71,6 +71,7 @@ class Bornholdt2D:
         p_up = 1.0 / (1.0 + np.exp(-2.0 * self.beta * h))
         S_new = 1 if self.rng.random() < p_up else -1
         self.S[i, j] = S_new
+        self.sumS += (S_new - S_old)
 
         # 3) compute new magnetization exactly, without recomputing mean(S)
         # M = (1/N) sum S, so flipping one spin changes M by (S_new - S_old)/N
