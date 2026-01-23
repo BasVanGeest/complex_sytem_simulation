@@ -1,0 +1,12 @@
+{
+  "L": 32,
+  "J": 1.0,
+  "alpha": 4.0,
+  "T": 1.5,
+  "seed": 0,
+  "n_sweeps": 50000,
+  "burn_in": 10000,
+  "thin": 1,
+  "return_mode": "log_absM",
+  "eps": 1e-06
+}
