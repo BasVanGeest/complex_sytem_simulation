@@ -2,12 +2,24 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from matplotlib.animation import FuncAnimation
 from model_network import BornholdtNetwork
+from networks import create_network
+
 
 def main():
     n = 50
-    m = 2
     SEED = 42
-    G = nx.barabasi_albert_graph(n, m, seed=SEED)
+    NETWORK_TYPE = "WS"  # "BA", "ER", or "WS"
+
+    G = create_network(
+        net_type=NETWORK_TYPE,
+        n=n,
+        seed=SEED,
+
+        m=2,   # BA only 
+        k=4,   # WS only
+        p=0.2  # Used by ER or WS
+    )
+
     J = 1.0
     alpha = 4.0
     T = 1.5
