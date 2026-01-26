@@ -16,7 +16,7 @@ class Bornholdt2D:
     - Strategy switching rule for C: flip if C*S*M < 0
     """
 
-    def __init__(self, L: int, J: float= 1.0, alpha: float = 4.0, T: float = 1.5, seed: int | None = None):
+    def __init__(self, L: int, J: float= 1.0, alpha: float = 4.0, T: float = 1.5, seed: int | None = None, update_C: bool = True):
         self.L = L
         self.N = L*L
         self.J = J
@@ -33,6 +33,8 @@ class Bornholdt2D:
 
         # Strategy spins (chartist/fundamentalist)
         self.C = self.rng.choice([-1,+1], size=(L,L))
+
+        self.update_C = update_C
 
     def magnetization(self):
         return self.sumS / self.N
@@ -83,8 +85,9 @@ class Bornholdt2D:
         M_new = self.sumS / self.N
 
         # 4) strategy switching using NEW S and NEW M
-        if self.C[i, j] * self.S[i, j] * M_new < 0:
-            self.C[i, j] *= -1
+        if self.update_C:
+            if self.C[i, j] * self.S[i, j] * M_new < 0:
+                self.C[i, j] *= -1
     
     def sweep(self):
         """One Monte Carlo sweep = N random-site updates."""
