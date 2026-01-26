@@ -13,8 +13,8 @@ def main():
     # ===== parameters (paper-style baseline) =====
     L = 32
     J = 1.0
-    alpha = 4.0
-    T = 1.5
+    alpha = 2.0
+    T = 0.5
     seed = 0
 
     # ===== run control =====
