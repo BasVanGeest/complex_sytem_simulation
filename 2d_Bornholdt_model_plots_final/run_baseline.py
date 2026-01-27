@@ -3,6 +3,7 @@ import os
 import argparse
 import numpy as np
 
+from tqdm import tqdm
 from bornholdt_model import Bornholdt2D
 
 
@@ -47,7 +48,7 @@ def main() -> None:
         last_M = None
         kept = 0
 
-        for step in range(args.steps):
+        for step in tqdm(range(args.steps)):
             model.sweep()  # 1 sweep = N random-serial async single-site heat-bath updates; C updated immediately after each S
 
             if step < args.burn_in:
