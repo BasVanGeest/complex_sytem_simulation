@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 .venv/
 2d_Bornholdt_model_plots_final/data/
+data/data_fig_2_5.csv
+data/data_fig_3_4.csv

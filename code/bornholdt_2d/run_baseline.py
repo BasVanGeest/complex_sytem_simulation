@@ -1,11 +1,15 @@
 # run_baseline.py
 import os
 import argparse
+import sys
 import numpy as np
+import pathlib
 
+from tqdm import tqdm
 from bornholdt_model import Bornholdt2D
-from model_network import BornholdtNetwork
-from networks import create_network
+sys.path.append(str(pathlib.Path(__file__).parent.parent))  # adds parent folder
+from bornholdt_network.model_network import BornholdtNetwork
+from bornholdt_network.networks import create_network
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -89,7 +93,7 @@ def run_and_collect(
     chartist_frac_list: list[float] = []
     fundamentalist_frac_list: list[float] = []
 
-    for t in range(n_steps):
+    for t in tqdm(range(n_steps)):
         model.time_step()
 
         if t < burn_in:

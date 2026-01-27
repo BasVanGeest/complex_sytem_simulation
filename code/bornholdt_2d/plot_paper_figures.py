@@ -176,7 +176,7 @@ def main():
     #allow multiple runs/topologies without overwriting.
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir", type=str, default="data", help="Directory containing data_fig_*.csv")
-    parser.add_argument("--outdir", type=str, default="paper_figures", help="Directory to save figure PNGs")
+    parser.add_argument("--outdir", type=str, default="graphs/paper_figures", help="Directory to save figure PNGs")
     args = parser.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
