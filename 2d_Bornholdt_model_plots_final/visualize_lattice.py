@@ -15,7 +15,7 @@ def load_params(path="params.json"):
         alpha=4.0,
         T=1.5,          # paper uses T = 1/beta = 1.5  (beta = 1/T)
         seed=0,
-        steps_per_frame=1,  # 1 "time step" = 1 sweep + synchronous C update
+        steps_per_frame=1,  # 1 "time step" = 1 Monte Carlo sweep (N async single-site updates)
         n_frames=300,
         interval_ms=60,
         show="S",           # "S" or "C"
@@ -87,22 +87,26 @@ def main():
     def update(_frame_idx):
         # advance the model by Bornholdt time steps
         for _ in range(steps_per_frame):
-            model.time_step()   # sweep + synchronous C update (paper t -> t+1)
+            model.sweep()       # one sweep: N random-serial async heat-bath site updates; C updated immediately after each S
             t["step"] += 1
 
         # update image + text
         im.set_data(grid())
-        M = model.magnetization_M()
+        M = model.M()
 
         frac_buy = float(np.mean(model.S == 1))
         frac_sell = float(np.mean(model.S == -1))
-        C_mean = model.mean_strategy_C()
+        # Strategy tracking (Bornholdt: "keeps track of the ratio of strategy choices")
+        frac_chartist = model.frac_chartist() if hasattr(model, "frac_chartist") else float(np.mean(model.C == -1))
+        frac_fund = 1.0 - frac_chartist
+        C_mean = float(np.mean(model.C))
 
         txt.set_text(
             f"t (sweeps): {t['step']}\n"
             f"L={L}, J={J:g}, alpha={alpha:g}, T={T:g} (beta={1.0/T:.3f})\n"
             f"M: {M:.3f}\n"
             f"buy(+1): {frac_buy:.2f}   sell(-1): {frac_sell:.2f}\n"
+            f"fundamentalist(C=+1): {frac_fund:.2f}   chartist(C=-1): {frac_chartist:.2f}\n"
             f"<C>: {C_mean:.3f}"
         )
         return im, txt
