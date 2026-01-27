@@ -64,13 +64,19 @@ def autocorrelation(x, max_lag):
         acf[lag] = np.mean(x[:-lag] * x[lag:]) / var
     return acf
 
+def window_by_t(data, t_min, t_max):
+    t = data["t"]
+    mask = (t >= t_min) & (t <= t_max)
+    return data[mask]
 
 # ---------------------------------------------------------------------
 # FIGURE 2 — Returns time series
 # ---------------------------------------------------------------------
-def plot_fig2(data, outdir):
-    t = data["t"]
-    r = data["r"]
+def plot_fig2(data, outdir, t_min=10000, t_max=20000):
+    d = window_by_t(data, t_min, t_max)
+
+    t = d["t"]
+    r = d["r"]
     mask = np.isfinite(r)
 
     plt.figure(figsize=(10, 3))
@@ -121,36 +127,49 @@ def plot_fig4(data, outdir, max_lag=2000):
     abs_r = data["abs_r"]
     abs_r = abs_r[np.isfinite(abs_r)]
 
-    acf = autocorrelation(abs_r, max_lag)
+    # Volatility V(t) = |ret(t)| (Yamano: n=1, gamma=1)
+    V = abs_r
+
+    acf = autocorrelation(V, max_lag)
+
+    # Yamano starts from T = 1 (not T = 0)
+    lags = np.arange(1, len(acf), dtype=float)
+    vals = acf[1:]
+
+    # keep only positive values for log-log
+    mask = np.isfinite(vals) & (vals > 0)
+    lags = lags[mask]
+    vals = vals[mask]
 
     plt.figure(figsize=(6, 4))
-    plt.semilogx(np.arange(len(acf)), acf, lw=1.0, color="black")
-    plt.xlabel("lag T")
-    plt.ylabel("ACF(|ret|)")
-    plt.title("Fig. 4 — Volatility autocorrelation")
+    plt.loglog(lags, vals, lw=1.0, color="black")
+    plt.xlabel("Time")
+    plt.ylabel("Autocorrelation function")
+    plt.title("Fig. 4 — Volatility autocorrelation (Yamano style)")
     plt.tight_layout()
-    plt.savefig(os.path.join(outdir, "fig4_volatility_acf.png"), dpi=300)
+    plt.savefig(os.path.join(outdir, "fig4_volatility_autocorr_yamano.png"), dpi=300)
     plt.close()
+
 
 
 # ---------------------------------------------------------------------
 # FIGURE 5 — Fraction of chartists vs volatility
 # ---------------------------------------------------------------------
-def plot_fig5(data, outdir):
-    t = data["t"]
-    abs_r = data["abs_r"]
-    chartist_frac = data["chartist_frac"]
+def plot_fig5(data, outdir, t_min=10000, t_max=20000):
+    d = window_by_t(data, t_min, t_max)
+
+    t = d["t"]
+    abs_r = d["abs_r"]
+    chartist_frac = d["chartist_frac"]
 
     mask = np.isfinite(abs_r) & np.isfinite(chartist_frac)
 
     fig, ax1 = plt.subplots(figsize=(10, 4))
 
-    # Volatility (|ret|)
     ax1.plot(t[mask], abs_r[mask], color="black", lw=0.5)
     ax1.set_xlabel("time (sweeps)")
     ax1.set_ylabel("|ret(t)|", color="black")
 
-    # Strategy fraction (second axis)
     ax2 = ax1.twinx()
     ax2.plot(t[mask], chartist_frac[mask], color="red", lw=0.8)
     ax2.set_ylabel("fraction of chartists (C=-1)", color="red")
@@ -176,13 +195,14 @@ def main():
     if missing:
         raise ValueError(f"Missing columns {missing}. Found: {data.dtype.names}")
 
-    plot_fig2(data, outdir)
-    plot_fig3_yamano(data, outdir, scale=100.0)  # Yamano-style Fig 3
+    plot_fig2(data, outdir, t_min=10000, t_max=20000)
+    plot_fig3_yamano(data, outdir, scale=100.0)
     plot_fig4(data, outdir, max_lag=2000)
-    plot_fig5(data, outdir)
+    plot_fig5(data, outdir, t_min=10000, t_max=20000)
 
     print(f"Figures saved to '{outdir}/'")
 
 
 if __name__ == "__main__":
     main()
+

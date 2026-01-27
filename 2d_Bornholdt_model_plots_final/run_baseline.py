@@ -15,11 +15,11 @@ def main() -> None:
     ap.add_argument("--J", type=float, default=1.0)
 
     # Intermediary choice between (T=1.5, alpha=4) and (T=1.0, alpha=8)
-    ap.add_argument("--T", type=float, default=1.2)
-    ap.add_argument("--alpha", type=float, default=6.0)
+    ap.add_argument("--T", type=float, default=1.5)
+    ap.add_argument("--alpha", type=float, default=8.0)
 
     # Larger than 50k, far smaller than 1e6
-    ap.add_argument("--steps", type=int, default=50_000, help="Total sweeps (1 sweep = 1 time step).")
+    ap.add_argument("--steps", type=int, default=200_000, help="Total sweeps (1 sweep = 1 time step).")
     ap.add_argument("--burn_in", type=int, default=10_000)
     ap.add_argument("--thin", type=int, default=1)
     ap.add_argument("--seed", type=int, default=0)
