@@ -182,7 +182,7 @@ def main():
     os.makedirs(args.outdir, exist_ok=True)
 
     data_dir = "data"
-    outdir = "paper_figures"
+    outdir = "graphs/paper_figures"
     os.makedirs(outdir, exist_ok=True)
 
     data_2_5 = load_csv(os.path.join(data_dir, "data_fig_2_5.csv"))

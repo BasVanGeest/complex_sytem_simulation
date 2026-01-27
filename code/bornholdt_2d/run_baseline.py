@@ -188,7 +188,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Run Bornholdt baseline (Bornholdt 2001) on lattice OR network and save CSVs for Figs. 2–5."
     )
-    parser.add_argument("--out_dir", type=str, default="data", help="Output directory for CSV files.")
+    parser.add_argument("--out_dir", type=str, default="../../data", help="Output directory for CSV files.")
     parser.add_argument("--seed", type=int, default=0, help="RNG seed for both runs.")
     parser.add_argument("--burn_in", type=int, default=10_000, help="Burn-in time steps before recording.")
     parser.add_argument("--thin", type=int, default=1, help="Record every 'thin' steps after burn-in.")
@@ -207,9 +207,9 @@ def main():
     parser.add_argument("--k", type=int, default=4, help="WS only: nearest neighbors (should be even).")
     parser.add_argument("--p", type=float, default=0.1, help="ER/WS: connection/rewiring probability.")
 
-    parser.add_argument("--steps_2_5", type=int, default=50_000,
+    parser.add_argument("--steps_2_5", type=int, default=1_000,
                         help="Total steps for the (T=1.5, alpha=4) run (Figs. 2 & 5).")
-    parser.add_argument("--steps_3_4", type=int, default=1_000_000,
+    parser.add_argument("--steps_3_4", type=int, default=1_000,
                         help="Total steps for the (T=1.0, alpha=8) run (Figs. 3 & 4).")
 
     args = parser.parse_args()
