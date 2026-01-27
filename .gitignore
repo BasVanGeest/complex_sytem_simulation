@@ -1,3 +1,8 @@
 __pycache__/
 *.pyc
+<<<<<<< HEAD
 .venv/
+=======
+.venv/
+2d_Bornholdt_model_plots_final/data/
+>>>>>>> main
