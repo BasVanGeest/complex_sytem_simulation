@@ -1,5 +1,7 @@
+# visualize_network.py
 import os
 import json
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -9,27 +11,25 @@ from model_network import BornholdtNetwork
 from networks import create_network
 
 
-def load_params(path="params_network.json"):
-    # mirror lattice visualizer style so teammates have one mental model
+def load_params(path: str = "params_network.json"):
     defaults = dict(
-        net_type="WS",   # BA, ER, WS
+        net_type="WS",
         L=32,
-        n=None,          # if None, uses N=L*L like the paper lattice size
-
-        m=2,             # BA only
-        k=4,             # WS only
-        p=0.1,           # ER/WS
-
+        n=None,
+        m=2,
+        k=4,
+        p=0.1,
         J=1.0,
-        alpha=4.0,
+        alpha=8.0,
         T=1.5,
         seed=0,
-
-        steps_per_frame=1, 
+        steps_per_frame=1,
         n_frames=300,
         interval_ms=60,
-        show="S",           # "S" or "C"
-        layout="spring",    # spring / circular / kamada_kawai
+        show="S",
+        layout="spring",
+        node_size=120,
+        edge_alpha=0.25,
     )
 
     if not os.path.exists(path):
@@ -39,25 +39,52 @@ def load_params(path="params_network.json"):
         user = json.load(f)
 
     out = defaults.copy()
-    for k, v in user.items():
-        if k in out:
-            out[k] = v
+    out.update({k: v for k, v in user.items() if k in out})
     return out
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Visualize Bornholdt network dynamics")
+
+    parser.add_argument("--topology", choices=["BA", "ER", "WS"], help="Network topology")
+    parser.add_argument("--L", type=int, help="Linear size (N = L*L)")
+    parser.add_argument("--n", type=int, help="Number of nodes (overrides L*L)")
+    parser.add_argument("--m", type=int, help="BA parameter")
+    parser.add_argument("--k", type=int, help="WS parameter")
+    parser.add_argument("--p", type=float, help="ER / WS parameter")
+    parser.add_argument("--seed", type=int, help="Random seed")
+
+    args = parser.parse_args()
+
+    # Load defaults / JSON
     p = load_params()
 
-    net_type = str(p["net_type"]).upper().strip()
+    # CLI overrides JSON/defaults
+    if args.topology is not None:
+        p["net_type"] = args.topology
+    if args.L is not None:
+        p["L"] = args.L
+    if args.n is not None:
+        p["n"] = args.n
+    if args.m is not None:
+        p["m"] = args.m
+    if args.k is not None:
+        p["k"] = args.k
+    if args.p is not None:
+        p["p"] = args.p
+    if args.seed is not None:
+        p["seed"] = args.seed
+
+    net_type = p["net_type"].upper()
     seed = int(p["seed"])
 
-    n = p.get("n", None)
-    if n is None:
-        L = int(p["L"])
-        n = L * L
+    # N = n or L*L
+    if p["n"] is None:
+        n = int(p["L"]) ** 2
     else:
-        n = int(n)
+        n = int(p["n"])
 
+    # Build network (same factory as run_network)
     G = create_network(
         net_type=net_type,
         n=n,
@@ -79,35 +106,30 @@ def main():
     n_frames = int(p["n_frames"])
     interval_ms = int(p["interval_ms"])
 
-    state = {"show": p.get("show", "S")}
+    state = {"show": p["show"].upper()}
     t = {"step": 0}
 
     fig, ax = plt.subplots()
     ax.axis("off")
 
-    layout = str(p.get("layout", "spring")).lower().strip()
-    if layout == "spring":
-        pos = nx.spring_layout(G, seed=seed)
-    elif layout == "circular":
+    if p["layout"] == "circular":
         pos = nx.circular_layout(G)
-    elif layout == "kamada_kawai":
+    elif p["layout"] == "kamada_kawai":
         pos = nx.kamada_kawai_layout(G)
     else:
         pos = nx.spring_layout(G, seed=seed)
 
-    def title():
-        if state["show"] == "S":
-            return "Bornholdt network: S (buy/sell)  [press 't' to toggle S/C]"
-        return "Bornholdt network: C (strategy)  [press 't' to toggle S/C]"
-
-    ax.set_title(title())
-
     def node_colors():
         spins = model.S if state["show"] == "S" else model.C
-        return ["red" if s == 1 else "blue" for s in spins]
+        return np.where(spins == 1, "red", "blue")
 
-    nodes = nx.draw_networkx_nodes(G, pos, node_color=node_colors(), node_size=120, ax=ax)
-    nx.draw_networkx_edges(G, pos, alpha=0.25, ax=ax)
+    nodes = nx.draw_networkx_nodes(
+        G, pos,
+        node_color=node_colors(),
+        node_size=int(p["node_size"]),
+        ax=ax,
+    )
+    nx.draw_networkx_edges(G, pos, alpha=float(p["edge_alpha"]), ax=ax)
 
     txt = ax.text(
         0.02, 0.98, "", transform=ax.transAxes,
@@ -118,39 +140,34 @@ def main():
     def on_key(event):
         if event.key == "t":
             state["show"] = "C" if state["show"] == "S" else "S"
-            ax.set_title(title())
-            nodes.set_color(node_colors())
+            nodes.set_facecolor(node_colors())
             fig.canvas.draw_idle()
 
     fig.canvas.mpl_connect("key_press_event", on_key)
 
-    def update(_frame_idx):
-        #use time_step(), not sweep(), so one step matches the runner. 
+    def update(_):
         for _ in range(steps_per_frame):
             model.time_step()
             t["step"] += 1
 
-        nodes.set_color(node_colors())
+        nodes.set_facecolor(node_colors())
 
         M = model.magnetization_M()
-        frac_buy = float(np.mean(model.S == 1))
-        frac_sell = float(np.mean(model.S == -1))
-        frac_fund = float(np.mean(model.C == 1))
-        frac_chart = float(np.mean(model.C == -1))
-
         txt.set_text(
-            f"t (steps): {t['step']}\n"
+            f"t={t['step']}\n"
             f"net={net_type}, N={model.N}\n"
-            f"J={model.J:g}, alpha={model.alpha:g}, T={model.T:g} (beta={model.beta:.3f})\n"
-            f"M: {M:.3f}\n"
-            f"buy(+1): {frac_buy:.2f}   sell(-1): {frac_sell:.2f}\n"
-            f"fund(C=+1): {frac_fund:.2f}   chart(C=-1): {frac_chart:.2f}"
+            f"M={M:.3f}"
         )
         return nodes, txt
 
-    ani = FuncAnimation(fig, update, frames=n_frames, interval=interval_ms, blit=False)
+    ani = FuncAnimation(
+        fig,
+        update,
+        frames=n_frames,
+        interval=interval_ms,
+    )
     plt.show()
 
 
 if __name__ == "__main__":
-    main()
+    main() 

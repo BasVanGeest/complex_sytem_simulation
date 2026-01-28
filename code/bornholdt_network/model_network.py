@@ -1,66 +1,79 @@
 import numpy as np
 import networkx as nx
 
+
 class BornholdtNetwork:
     """
-    Bornholdt Network spin market model with two spins per agent:
+    Bornholdt Network spin market model with two spins per agent, updated *fully asynchronously*
+    (matching the lattice async Bornholdt2D logic):
 
-    S_ij in {+1,-1}: buy/sell decision
-    C_ij in {+1,-1}: strategy (e.g., chartist/fundamentalist)
+    - Graph topology defines neighbors
+    - Decision spins S_i ∈ {+1,-1}
+    - Strategy spins C_i ∈ {+1,-1}
 
     Local field:
-        h_ij = J * sum_nn(S) - alpha * C_ij * M
-    where M = mean(S).
+        h_i = J * sum_{j in neigh(i)} S_j - alpha * C_i * M
+    where M = (1/N) sum_i S_i
 
-    Updates:
-    - Keep the same pipeline as the lattice baseline:
-    - Class re-writtent to be a drop-in sibling of Bornholdt2D so that the same
-      run_baseline.py + plot_paper_figures.py can be reused for both lattice and networks.
+    Asynchronous update (per node, random serial):
+      1) compute M_before from current sumS
+      2) update S_i by heat-bath using M_before and current C_i
+      3) immediately update C_i using updated S_i and updated sumS:
+            flip C_i if S_i * C_i * sumS < 0   (equiv to S_i * C_i * M < 0)
+
+    NOTE:
+    - `time_step()` performs ONE "sweep": N random-serial single-node updates,
+      but each update includes BOTH S and C updates immediately (async).
+    - Method names are aligned with your baseline runner/plotter expectations.
     """
 
-    def __init__(self, G, J: float= 1.0, alpha: float = 4.0, T: float = 1.5, seed: int | None = None):
+    def __init__(self, G, J: float = 1.0, alpha: float = 4.0, T: float = 1.5, seed: int | None = None):
         self.G = G
         self.N = int(nx.number_of_nodes(G))
+
         nodes = list(self.G.nodes())
         if nodes and (min(nodes) != 0 or max(nodes) != self.N - 1):
             raise ValueError(
                 "BornholdtNetwork assumes nodes are labeled 0..N-1. "
                 "Use nx.convert_node_labels_to_integers(G) if needed."
             )
-        self.J = J
-        self.alpha = alpha
-        self.T = T
-        self.beta = 1.0 / T
+
+        self.J = float(J)
+        self.alpha = float(alpha)
+        self.T = float(T)
+        if self.T <= 0:
+            raise ValueError("Temperature T must be > 0.")
+        self.beta = 1.0 / self.T
+
         self.rng = np.random.default_rng(seed)
 
-        # Decision spins (buy/sell)
+        # spins
         self.S = self.rng.choice([-1, +1], size=self.N)
-
-        # Strategy spins (chartist/fundamentalist)
         self.C = self.rng.choice([-1, +1], size=self.N)
 
-        #Cache sum(S) so magnetization is O(1), needed for long runs (Fig 3 uses 10^6 sweeps)
+        # maintain sumS for O(1) magnetization
         self._sumS = int(self.S.sum())
 
-        #Precompute neighbor lists for speed
+        # (Optional bookkeeping; not required by your runner but useful)
+        self._n_chartist = int((self.C == -1).sum())
+
+        # precompute neighbor arrays for speed
         self.neigh = [np.fromiter(self.G.neighbors(i), dtype=int) for i in range(self.N)]
-  
-    #Baseline-compatible (same names as Bornholdt2D)
+
+    # ---------------------------------------------------------------------
+    # Baseline-compatible names (so your runner/plotter don't change)
+    # ---------------------------------------------------------------------
     def magnetization_M(self) -> float:
         return self._sumS / self.N
 
     def mean_strategy_C(self) -> float:
         return float(self.C.mean())
 
-    def magnetization(self) -> float:
-        return self.magnetization_M()
-    
-    #Heat-bath micro-update
+    # ---------------------------------------------------------------------
+    # Heat-bath helper
+    # ---------------------------------------------------------------------
     @staticmethod
     def _heat_bath_prob_up(beta: float, h: float) -> float:
-        """
-        Matches Bornholdt2Ds helper
-        """
         x = 2.0 * beta * h
         if x >= 50.0:
             return 1.0
@@ -68,65 +81,60 @@ class BornholdtNetwork:
             return 0.0
         return 1.0 / (1.0 + np.exp(-x))
 
-    def _neighbors_sum_S(self, node: int) -> float:
+    def _neighbors_sum_S(self, node: int) -> int:
         nbrs = self.neigh[node]
         if nbrs.size == 0:
-            return 0.0
-        return float(self.S[nbrs].sum())
+            return 0
+        return int(self.S[nbrs].sum())
 
-    def _local_field(self, node: int, M: float) -> float:
-        """
-        paper Eq.(2):
-        """
-        return self.J * self._neighbors_sum_S(node) - self.alpha * self.C[node] * M
+    def _local_field(self, node: int, M_now: float) -> float:
+        return self.J * self._neighbors_sum_S(node) - self.alpha * self.C[node] * M_now
 
-    def update_decision_spin_S(self, node: int, M: float) -> None:
-        """
-        Rename + behavior to match lattice baseline naming.
-        Update S_node by heat-bath, with C held fixed during sweep.
-        """
+    # ---------------------------------------------------------------------
+    # Fully asynchronous single-node update (S then C immediately)
+    # ---------------------------------------------------------------------
+    def _update_node(self, node: int) -> None:
+        # magnetization BEFORE updating this node
+        M_before = self._sumS / self.N
+
+        # 1) update S_node via heat-bath
         S_old = int(self.S[node])
-        h = self._local_field(node, M)
+        h = self._local_field(node, M_before)
         p_up = self._heat_bath_prob_up(self.beta, h)
-        S_new = 1 if (self.rng.random() < p_up) else -1
+        S_new = +1 if (self.rng.random() < p_up) else -1
 
         if S_new != S_old:
             self.S[node] = S_new
             self._sumS += (S_new - S_old)
 
-    def update_strategy_spins_C_synchronously(self, M: float) -> None:
-        """
-        Strategy switching rule (paper Eq.(3)):
-          if C_i * S_i * M < 0 then flip C_i
-        Apply this synchronously once per sweep to match the baseline time-step logic.
-        """
-        flip = (self.C * self.S * M) < 0
-        self.C[flip] *= -1
+        # 2) immediately update C_node using UPDATED S and UPDATED sumS
+        C_old = int(self.C[node])
+        if (int(self.S[node]) * C_old * self._sumS) < 0:
+            C_new = -C_old
+            self.C[node] = C_new
 
+            # optional bookkeeping
+            if C_old == -1:
+                self._n_chartist -= 1
+            else:
+                self._n_chartist += 1
 
-    #time step = one sweep + synchronous C update
+    # ---------------------------------------------------------------------
+    # One "sweep" / one time step in the runner sense
+    # ---------------------------------------------------------------------
     def monte_carlo_sweep(self) -> None:
-        """
-        One Monte Carlo sweep = N random-serial single-node S updates.
-        C is held fixed during the sweep.
-        """
+        """One sweep = N random-serial asynchronous node updates (each updates S then C)."""
         order = self.rng.permutation(self.N)
         for node in order:
-            M_inst = self.magnetization_M()
-            self.update_decision_spin_S(int(node), M_inst)
+            self._update_node(int(node))
 
     def time_step(self) -> None:
-        """
-         Matches the same t -> t+1 semantics used in Bornholdt2D baseline:
-            1) sweep update of S with C fixed
-            2) compute M(t+1)
-            3) synchronous update of all C using M(t+1)
-        """
+        """Runner expects time_step(); here it's one full sweep."""
         self.monte_carlo_sweep()
-        M_new = self.magnetization_M()
-        self.update_strategy_spins_C_synchronously(M_new)
 
-    # Returns (same helper as Bornholdt2D)
+    # ---------------------------------------------------------------------
+    # Returns helper (same as lattice version)
+    # ---------------------------------------------------------------------
     @staticmethod
     def returns_from_magnetization(M_series: np.ndarray, eps: float = 1e-6) -> np.ndarray:
         M_series = np.asarray(M_series, dtype=float)
@@ -134,6 +142,7 @@ class BornholdtNetwork:
             return np.array([], dtype=float)
         P = np.abs(M_series) + float(eps)
         return np.log(P[1:]) - np.log(P[:-1])
+
 
 
 

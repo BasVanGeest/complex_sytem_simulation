@@ -3,55 +3,38 @@ import numpy as np
 
 class Bornholdt2D:
     """
-    Bornholdt (2001) 2D spin market model (two spins per agent), written to match
-    the paper's *time-step logic*:
+    Bornholdt (2001) 2D market spin model with *asynchronous* updates:
 
-    Variables on a LxL lattice (periodic BC):
-      - decision spin S_i(t) ∈ {+1, -1}  (buy/sell)
-      - strategy spin C_i(t) ∈ {+1, -1}  (fundamentalist/chartist indicator)
+    - LxL periodic lattice
+    - decision spin S_ij ∈ {+1,-1}
+    - strategy spin C_ij ∈ {+1,-1}  (+1=fundamentalist, -1=chartist)
 
-    Magnetization:
-      M(t) = (1/N) * Σ_i S_i(t)
+    Per Bornholdt description:
+      - random serial, asynchronous heat-bath updates of single sites
+      - for every updated S_ij, update C_ij *subsequently* (immediately)
 
-    Local field (paper Eq.(2)-style):
-      h_i(t) = J * Σ_{j nn(i)} S_j(t)  -  α * C_i(t) * M(t)
+    Local field (general version eq.(2) in Bornholdt text):
+      h_ij = J * sum_nn(S) - alpha * C_ij * M
+    where M = (1/N) sum(S)
 
-    Heat-bath update for S (paper Eq.(1)-style):
-      P(S_i(t+1)=+1) = 1 / (1 + exp(-2β h_i(t))), β = 1/T
-
-    Strategy switching (paper Eq.(3)-style), applied *synchronously once per sweep*:
-      if  S_i(t+1) * C_i(t) * M(t+1) < 0  then  C_i(t+1) = - C_i(t)
-      else                                  C_i(t+1) =   C_i(t)
-
-    Key fidelity choice vs many implementations:
-      - During a Monte Carlo sweep, C is held fixed (represents C(t)).
-      - After the sweep, we compute M(t+1) and then update all C synchronously to C(t+1).
-      This matches the paper's notion of a discrete time step t -> t+1.
+    Strategy update (Bornholdt eq.(3) logic, site-local, applied immediately):
+      flip C_ij if  alpha * S_ij * C_ij * sum(S) < 0
+    (equivalently: S_ij * C_ij * M < 0 since alpha>0, N>0)
     """
 
-    def __init__(
-        self,
-        L: int,
-        J: float = 1.0,
-        alpha: float = 4.0,
-        T: float = 1.5,
-        seed: int | None = None,
-        init_S: str = "random",   # "random", "all_up", "all_down"
-        init_C: str = "random",   # "random", "all_fundamentalist", "all_chartist"
-    ):
+    def __init__(self, L, J=1.0, alpha=4.0, T=1.5, seed=None,
+                 init_S="random", init_C="random"):
         self.L = int(L)
         self.N = self.L * self.L
-
         self.J = float(J)
         self.alpha = float(alpha)
         self.T = float(T)
         if self.T <= 0:
-            raise ValueError("Temperature T must be > 0.")
+            raise ValueError("T must be > 0.")
         self.beta = 1.0 / self.T
-
         self.rng = np.random.default_rng(seed)
 
-        # --- initialize S ---
+        # spins S
         if init_S == "random":
             self.S = self.rng.choice([-1, +1], size=(self.L, self.L))
         elif init_S == "all_up":
@@ -59,172 +42,130 @@ class Bornholdt2D:
         elif init_S == "all_down":
             self.S = -np.ones((self.L, self.L), dtype=int)
         else:
-            raise ValueError(f"Unknown init_S='{init_S}'")
+            raise ValueError(f"Unknown init_S={init_S!r}")
 
-        # maintain Σ S for O(1) magnetization
-        self._sumS = int(self.S.sum())
-
-        # --- initialize C ---
+        # strategy spins C
         if init_C == "random":
             self.C = self.rng.choice([-1, +1], size=(self.L, self.L))
         elif init_C == "all_fundamentalist":
-            # choose a convention: C=+1 means (say) fundamentalist
-            self.C = np.ones((self.L, self.L), dtype=int)
+            self.C = np.ones((self.L, self.L), dtype=int)   # +1
         elif init_C == "all_chartist":
-            self.C = -np.ones((self.L, self.L), dtype=int)
+            self.C = -np.ones((self.L, self.L), dtype=int)  # -1
         else:
-            raise ValueError(f"Unknown init_C='{init_C}'")
+            raise ValueError(f"Unknown init_C={init_C!r}")
 
-    # ---------------------------------------------------------------------
-    # Theory-facing quantities
-    # ---------------------------------------------------------------------
-    def magnetization_M(self) -> float:
-        """M(t) = (1/N) Σ_i S_i(t)."""
+        # maintain sums for O(1) M and strategy ratios
+        self._sumS = int(self.S.sum())
+        self._sumC = int(self.C.sum())
+        self._n_chartist = int((self.C == -1).sum())  # explicit ratio tracking
+
+    # ---- observables ----
+    def M(self) -> float:
         return self._sumS / self.N
 
-    def mean_strategy_C(self) -> float:
-        """⟨C⟩(t) = (1/N) Σ_i C_i(t) (useful for the paper's 'fraction of chartists' proxy)."""
-        return float(self.C.mean())
+    def frac_chartist(self) -> float:
+        """Fraction of chartists = P(C=-1)."""
+        return self._n_chartist / self.N
 
-    # ---------------------------------------------------------------------
-    # Lattice helpers (periodic boundary conditions)
-    # ---------------------------------------------------------------------
-    def sum_nearest_neighbors_S(self, i: int, j: int) -> int:
-        """Σ_{nn} S_j for the four nearest neighbors on a periodic 2D lattice."""
+    def frac_fundamentalist(self) -> float:
+        """Fraction of fundamentalists = P(C=+1)."""
+        return 1.0 - self.frac_chartist()
+
+    # ---- lattice helpers ----
+    def _nn_sumS(self, i, j) -> int:
         L = self.L
-        return (
-            self.S[(i + 1) % L, j] +
-            self.S[(i - 1) % L, j] +
-            self.S[i, (j + 1) % L] +
-            self.S[i, (j - 1) % L]
-        )
+        S = self.S
+        return S[(i + 1) % L, j] + S[(i - 1) % L, j] + S[i, (j + 1) % L] + S[i, (j - 1) % L]
 
-    def local_field_h(self, i: int, j: int, M: float) -> float:
-        """h_i(t) = J Σ_{nn} S - α C_i(t) M(t)."""
-        return self.J * self.sum_nearest_neighbors_S(i, j) - self.alpha * self.C[i, j] * M
+    def _h(self, i, j, M_now) -> float:
+        return self.J * self._nn_sumS(i, j) - self.alpha * self.C[i, j] * M_now
 
-    # ---------------------------------------------------------------------
-    # Microscopic update rules
-    # ---------------------------------------------------------------------
     @staticmethod
-    def _heat_bath_prob_up(beta: float, h: float) -> float:
-        """
-        Heat-bath probability P(S=+1) = 1/(1+exp(-2βh)), computed stably.
-        """
+    def _p_up(beta, h) -> float:
         x = 2.0 * beta * h
-        # avoid overflow in exp for large |x|
         if x >= 50.0:
             return 1.0
         if x <= -50.0:
             return 0.0
         return 1.0 / (1.0 + np.exp(-x))
 
-    def update_decision_spin_S(self, i: int, j: int, M: float) -> None:
-        """
-        Update S_i by heat-bath using the *current* M and the *current* C (held fixed during sweep).
-        This is the micro-update inside a Monte Carlo sweep.
-        """
-        S_old = int(self.S[i, j])
-        h = self.local_field_h(i, j, M)
-        p_up = self._heat_bath_prob_up(self.beta, h)
-        S_new = 1 if (self.rng.random() < p_up) else -1
-        if S_new != S_old:
-            self.S[i, j] = S_new
-            self._sumS += (S_new - S_old)
+    # ---- single-site asynchronous update (Bornholdt-style) ----
+    def _update_site(self, i, j) -> None:
+        # use instantaneous magnetization BEFORE updating this site
+        M_before = self._sumS / self.N
 
-    def update_strategy_spins_C_synchronously(self, M: float) -> None:
-        """
-        Apply the Bornholdt strategy switching rule (paper Eq.(3)) *synchronously*:
-          if C_i * S_i * M < 0 then flip C_i
-        """
-        # vectorized flip mask
-        flip = (self.C * self.S * M) < 0
-        self.C[flip] *= -1
+        # 1) heat-bath update S_ij
+        Sold = int(self.S[i, j])
+        h = self._h(i, j, M_before)
+        Snew = +1 if (self.rng.random() < self._p_up(self.beta, h)) else -1
+        if Snew != Sold:
+            self.S[i, j] = Snew
+            self._sumS += (Snew - Sold)
 
-    # ---------------------------------------------------------------------
-    # One model time step (paper t -> t+1)
-    # ---------------------------------------------------------------------
-    def monte_carlo_sweep(self) -> None:
-        """
-        One Monte Carlo sweep = N random-serial decision-spin updates.
-        Strategy spins are NOT updated here (C is held fixed during the sweep).
-        """
+        # 2) subsequently update C_ij immediately (as described)
+        # Bornholdt eq.(3) condition: alpha * S_i * C_i * sum(S) < 0
+        # Use UPDATED S_ij and UPDATED sum(S) (asynchronous).
+        Ci_old = int(self.C[i, j])
+        if (self.S[i, j] * Ci_old * self._sumS) < 0:
+            # flip C
+            Ci_new = -Ci_old
+            self.C[i, j] = Ci_new
+
+            # maintain counters
+            self._sumC += (Ci_new - Ci_old)
+            if Ci_old == -1:
+                self._n_chartist -= 1
+            else:
+                self._n_chartist += 1
+
+    # ---- one Monte Carlo sweep (N random-serial site updates) ----
+    def sweep(self) -> None:
         order = self.rng.permutation(self.N)
         L = self.L
         for k in order:
             i, j = divmod(int(k), L)
-            # use instantaneous M during the sweep (based on current ΣS)
-            M_inst = self.magnetization_M()
-            self.update_decision_spin_S(i, j, M_inst)
+            self._update_site(i, j)
 
-    def time_step(self) -> None:
+    # ---- simulation driver ----
+    def simulate(self, n_sweeps, burn_in=0, thin=1, eps=1e-6):
         """
-        One Bornholdt time step t -> t+1:
-          1) update S via one Monte Carlo sweep with C fixed
-          2) compute M(t+1)
-          3) update all C synchronously using S(t+1), M(t+1)
+        Runs n_sweeps sweeps.
+        Records:
+          - M(t)
+          - frac_chartist(t) (explicit "ratio of strategy choices")
         """
-        self.monte_carlo_sweep()
-        M_new = self.magnetization_M()
-        self.update_strategy_spins_C_synchronously(M_new)
-
-    # ---------------------------------------------------------------------
-    # Observables: returns from magnetization (paper-style)
-    # ---------------------------------------------------------------------
-    @staticmethod
-    def returns_from_magnetization(M_series: np.ndarray, eps: float = 1e-6) -> np.ndarray:
-        """
-        Paper-style practical return:
-          r(t) = log(|M(t)| + eps) - log(|M(t-1)| + eps)
-        """
-        M_series = np.asarray(M_series, dtype=float)
-        if M_series.size < 2:
-            return np.array([], dtype=float)
-        P = np.abs(M_series) + float(eps)
-        return np.log(P[1:]) - np.log(P[:-1])
-
-    # ---------------------------------------------------------------------
-    # Simulation driver
-    # ---------------------------------------------------------------------
-    def simulate(
-        self,
-        n_steps: int,
-        burn_in: int = 0,
-        thin: int = 1,
-        eps: float = 1e-6,
-        record_C: bool = True,
-    ) -> dict:
-        """
-        Run for n_steps Bornholdt time steps (each is sweep + synchronous C update).
-        Records M(t) (and optionally ⟨C⟩(t)) after burn-in, with thinning.
-        """
-        if n_steps <= 0:
-            raise ValueError("n_steps must be positive.")
-        if burn_in < 0 or burn_in >= n_steps:
-            raise ValueError("burn_in must satisfy 0 <= burn_in < n_steps.")
+        if n_sweeps <= 0:
+            raise ValueError("n_sweeps must be > 0.")
+        if burn_in < 0 or burn_in >= n_sweeps:
+            raise ValueError("burn_in must satisfy 0 <= burn_in < n_sweeps.")
         if thin <= 0:
-            raise ValueError("thin must be positive.")
+            raise ValueError("thin must be > 0.")
 
-        M_list: list[float] = []
-        C_list: list[float] = []
+        M_series = []
+        chartist_series = []
 
-        for t in range(n_steps):
-            self.time_step()
+        for t in range(n_sweeps):
+            self.sweep()
 
             if t < burn_in:
                 continue
             if ((t - burn_in) % thin) != 0:
                 continue
 
-            M_list.append(self.magnetization_M())
-            if record_C:
-                C_list.append(self.mean_strategy_C())
+            M_series.append(self.M())
+            chartist_series.append(self.frac_chartist())
 
-        M = np.array(M_list, dtype=float)
-        r = self.returns_from_magnetization(M, eps=eps)
-        abs_r = np.abs(r)
+        M_series = np.asarray(M_series, dtype=float)
+        chartist_series = np.asarray(chartist_series, dtype=float)
 
-        out = {"M": M, "r": r, "abs_r": abs_r}
-        if record_C:
-            out["C_mean"] = np.array(C_list, dtype=float)
-        return out
+        # Bornholdt paper plots often use log-return of |M|
+        P = np.abs(M_series) + float(eps)
+        r = np.log(P[1:]) - np.log(P[:-1]) if len(P) >= 2 else np.array([], dtype=float)
+
+        return {
+            "M": M_series,
+            "r": r,
+            "abs_r": np.abs(r),
+            "frac_chartist": chartist_series,
+            "frac_fundamentalist": 1.0 - chartist_series,
+        }
