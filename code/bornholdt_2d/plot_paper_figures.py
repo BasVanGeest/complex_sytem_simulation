@@ -17,10 +17,6 @@ def load_csv(path: str):
         columns: t,M,r,abs_r,C_mean,chartist_frac,fundamentalist_frac
 
     Then numeric rows follow.
-
-    This loader:
-    - parses the 'columns:' line to get names
-    - reads only the numeric part with those names
     """
     with open(path, "r", encoding="utf-8") as f:
         lines = f.read().splitlines()
@@ -86,7 +82,7 @@ def autocorrelation(x, max_lag):
 # ---------------------------------------------------------------------
 # FIGURE 2 — Returns time series
 # ---------------------------------------------------------------------
-def plot_fig2(data, outdir):
+def plot_fig2(data, outdir, prefix):
     t = data["t"]
     r = data["r"]
     mask = np.isfinite(r)
@@ -97,14 +93,16 @@ def plot_fig2(data, outdir):
     plt.ylabel("return r(t)")
     plt.title("Fig. 2 — Returns time series (Bornholdt 2001)")
     plt.tight_layout()
-    plt.savefig(os.path.join(outdir, "fig2_returns_timeseries.png"), dpi=300)
+    
+    save_path = os.path.join(outdir, f"{prefix}_fig_2_returns_timeseries.png")
+    plt.savefig(save_path, dpi=300)
     plt.close()
 
 
 # ---------------------------------------------------------------------
 # FIGURE 3 — CCDF of |returns|
 # ---------------------------------------------------------------------
-def plot_fig3(data, outdir):
+def plot_fig3(data, outdir, prefix):
     abs_r = data["abs_r"]
     abs_r = abs_r[np.isfinite(abs_r)]
 
@@ -116,19 +114,20 @@ def plot_fig3(data, outdir):
     plt.ylabel("P(|r| ≥ x)")
     plt.title("Fig. 3 — CCDF of absolute returns")
     plt.tight_layout()
-    plt.savefig(os.path.join(outdir, "fig3_ccdf_abs_returns.png"), dpi=300)
+    
+    save_path = os.path.join(outdir, f"{prefix}_fig_3_ccdf_abs_returns.png")
+    plt.savefig(save_path, dpi=300)
     plt.close()
-
 
 
 # ---------------------------------------------------------------------
 # FIGURE 4 — Volatility autocorrelation
 # ---------------------------------------------------------------------
-def plot_fig4(data, outdir):
+def plot_fig4(data, outdir, prefix):
     abs_r = data["abs_r"]
     abs_r = abs_r[np.isfinite(abs_r)]
 
-    max_lag = 2000  # closer to the paper scale (can reduce if too slow/noisy)
+    max_lag = 2000 
     acf = autocorrelation(abs_r, max_lag)
 
     plt.figure(figsize=(6, 4))
@@ -137,14 +136,16 @@ def plot_fig4(data, outdir):
     plt.ylabel("ACF(|r|)")
     plt.title("Fig. 4 — Volatility autocorrelation")
     plt.tight_layout()
-    plt.savefig(os.path.join(outdir, "fig4_volatility_acf.png"), dpi=300)
+    
+    save_path = os.path.join(outdir, f"{prefix}_fig_4_volatility_acf.png")
+    plt.savefig(save_path, dpi=300)
     plt.close()
 
 
 # ---------------------------------------------------------------------
 # FIGURE 5 — Fraction of chartists vs volatility
 # ---------------------------------------------------------------------
-def plot_fig5(data, outdir):
+def plot_fig5(data, outdir, prefix):
     t = data["t"]
     abs_r = data["abs_r"]
     chartist_frac = data["chartist_frac"]
@@ -165,7 +166,9 @@ def plot_fig5(data, outdir):
 
     plt.title("Fig. 5 — Volatility and fraction of chartists")
     fig.tight_layout()
-    plt.savefig(os.path.join(outdir, "fig5_chartist_fraction_vs_volatility.png"), dpi=300)
+    
+    save_path = os.path.join(outdir, f"{prefix}_fig_5_chartist_fraction_vs_volatility.png")
+    plt.savefig(save_path, dpi=300)
     plt.close()
 
 
@@ -173,39 +176,46 @@ def plot_fig5(data, outdir):
 # MAIN
 # ---------------------------------------------------------------------
 def main():
-    #allow multiple runs/topologies without overwriting.
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="data", help="Directory containing data_fig_*.csv")
+    parser.add_argument("--data_file", type=str, default=None, help="Path to the CSV data file")
     parser.add_argument("--outdir", type=str, default="graphs/paper_figures", help="Directory to save figure PNGs")
+    
+    # Arguments to help construct the prefix if data_file is not provided
+    parser.add_argument("--topology", type=str, default="lattice")
+    parser.add_argument("--steps", type=int, default=200000)
+    
     args = parser.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
 
-    data_dir = "data"
-    outdir = "graphs/paper_figures"
-    os.makedirs(outdir, exist_ok=True)
+    # Determine data file and prefix
+    if args.data_file is None:
+        prefix = f"{args.topology.lower()}_{args.steps}"
+        data_path = os.path.join("/data", f"{prefix}_intermediate.csv")
+    else:
+        data_path = args.data_file
+        # Extract prefix from filename if possible, otherwise use a generic one
+        base = os.path.basename(data_path)
+        if "_intermediate.csv" in base:
+            prefix = base.replace("_intermediate.csv", "")
+        else:
+            prefix = "custom_run"
 
-    data_2_5 = load_csv(os.path.join(data_dir, "data_fig_2_5.csv"))
-    data_3_4 = load_csv(os.path.join(data_dir, "data_fig_3_4.csv"))
+    data = load_csv(data_path)
 
-    # sanity: check expected columns exist
+    # Sanity check
     required = {"t", "M", "r", "abs_r", "C_mean", "chartist_frac", "fundamentalist_frac"}
-    for name, d in [("data_fig_2_5.csv", data_2_5), ("data_fig_3_4.csv", data_3_4)]:
-        missing = required - set(d.dtype.names)
-        if missing:
-            raise ValueError(f"{name} is missing columns: {missing}. Found: {d.dtype.names}")
+    missing = required - set(data.dtype.names)
+    if missing:
+        raise ValueError(f"Data file is missing columns: {missing}")
 
-    plot_fig2(data_2_5, outdir)
+    # Generate plots with the prefix
+    plot_fig2(data, args.outdir, prefix)
+    plot_fig3(data, args.outdir, prefix)
+    plot_fig4(data, args.outdir, prefix)
+    plot_fig5(data, args.outdir, prefix)
 
-    # Fig 3 (your normalized CCDF of |log-returns|)
-    plot_fig3(data_3_4, outdir)
-
-
-    plot_fig4(data_3_4, outdir)
-    plot_fig5(data_2_5, outdir)
-
-    print(f"Figures saved to '{outdir}/'")
-
+    print(f"Figures saved to '{args.outdir}/' with prefix '{prefix}'")
 
 
 if __name__ == "__main__":
