@@ -7,6 +7,11 @@ from bornholdt_heterogeneity import Bornholdt2D_heterogeneity
 
 
 def main() -> None:
+    """CLI entry point: run one heterogeneous-alpha lattice simulation and write a single CSV for plotting.
+
+    The output includes a header with parameters and a time series of magnetization, returns,
+    absolute returns (volatility proxy), and strategy composition.
+    """
     ap = argparse.ArgumentParser(
         description=(
             "Run ONE Bornholdt2D heterogeneous-alpha configuration "
