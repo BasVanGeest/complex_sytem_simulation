@@ -9,6 +9,14 @@ from model_network import BornholdtNetwork
 
 
 def main():
+    """CLI entry point to run the Bornholdt spin-market model on a generated network and write a CSV.
+
+    Constructs a BA/ER/WS graph for N = L*L, initializes the BornholdtNetwork model, runs asynchronous
+    updates for the requested number of steps (with optional burn-in and thinning), computes returns
+    from changes in |magnetization| (using eps for numerical stability), and writes a time series CSV
+    with: step, M, r, abs_r, mean_strategy_C, frac_chartist, frac_fundamentalist.
+    """
+
     parser = argparse.ArgumentParser(description="Run Bornholdt model on a network")
 
     # --- Network / system size ---
