@@ -1,76 +1,46 @@
-# plot_overlap_figures.py
+import argparse
 import os
-import re
-import numpy as np
-import matplotlib.pyplot as plt
 from io import StringIO
 
+import numpy as np
+import matplotlib.pyplot as plt
 
-# -----------------------------
-# CSV utilities
-# -----------------------------
-def load_csv_with_comments(path: str):
-    """
-    Loads a CSV that may start with comment lines '# ...'
-    Returns: (data_structured_array, comment_lines_list)
-    """
+
+def load_csv(path: str) -> np.ndarray:
+    """Load CSV that may start with '#' comment lines; returns structured array."""
     with open(path, "r", encoding="utf-8") as f:
-        raw_lines = [ln.rstrip("\n") for ln in f.readlines() if ln.strip()]
-
-    comments = [ln for ln in raw_lines if ln.lstrip().startswith("#")]
-    lines = [ln for ln in raw_lines if not ln.lstrip().startswith("#")]
+        lines = [ln.strip() for ln in f if ln.strip() and not ln.lstrip().startswith("#")]
 
     if len(lines) < 2:
-        raise ValueError(f"CSV {path} doesn't look like [header] + [data].")
+        raise ValueError(f"{path} doesn't look like [header] + [data rows].")
 
     header = [c.strip() for c in lines[0].split(",")]
-    data_lines = lines[1:]
-
-    buf = StringIO("\n".join(data_lines))
-    data = np.genfromtxt(buf, delimiter=",", names=header, dtype=float)
-
-    return data, comments
+    buf = StringIO("\n".join(lines[1:]))
+    return np.genfromtxt(buf, delimiter=",", names=header, dtype=float)
 
 
-def normalize_fieldnames(data):
-    """
-    Some runs may use slightly different column names.
-    This function just ensures we can access the needed fields robustly.
-    """
+def ensure_abs_r(data: np.ndarray) -> np.ndarray:
+    """Ensure data has abs_r; compute it from r if needed."""
     names = set(data.dtype.names)
+    if "abs_r" in names:
+        return data
+    if "r" not in names:
+        raise ValueError(f"Need 'abs_r' or 'r' in columns, found: {data.dtype.names}")
 
-    # need at least r or abs_r
-    required_any = {"abs_r", "r"}
-    if not (required_any & names):
-        raise ValueError(f"Expected at least one of {required_any}, found {data.dtype.names}")
-
-    # If abs_r missing but r exists, compute abs_r
-    if "abs_r" not in names and "r" in names:
-        abs_r = np.abs(data["r"])
-        data = append_field(data, "abs_r", abs_r)
-
-    return data
-
-
-def append_field(data, name, values):
-    """Append a new float field to a structured array."""
-    values = np.asarray(values, dtype=float)
-    newdtype = data.dtype.descr + [(name, "f8")]
+    abs_r = np.abs(data["r"])
+    newdtype = data.dtype.descr + [("abs_r", "f8")]
     out = np.empty(data.shape, dtype=newdtype)
     for n in data.dtype.names:
         out[n] = data[n]
-    out[name] = values
+    out["abs_r"] = abs_r
     return out
 
 
-# -----------------------------
-# Stats utilities
-# -----------------------------
-def ccdf(x):
-    """Return sorted x and CCDF y = P(X >= x)."""
+def ccdf(x: np.ndarray):
+    """Return sorted x and CCDF y=P(X>=x)."""
     x = np.asarray(x, dtype=float)
     x = x[np.isfinite(x)]
-    x = x[x > 0]  # avoid log(0)
+    x = x[x > 0]
     x = np.sort(x)
     n = x.size
     if n == 0:
@@ -79,11 +49,8 @@ def ccdf(x):
     return x, y
 
 
-def autocorrelation(x, max_lag):
-    """
-    Normalized autocorrelation:
-      C(lag) = <(x_t-mean)(x_{t+lag}-mean)> / var
-    """
+def autocorrelation(x: np.ndarray, max_lag: int) -> np.ndarray:
+    """Normalized autocorrelation for lags 0..max_lag."""
     x = np.asarray(x, dtype=float)
     x = x[np.isfinite(x)]
     if x.size < 5:
@@ -102,89 +69,31 @@ def autocorrelation(x, max_lag):
     return acf
 
 
-def window_by_t(data, t_min, t_max):
+def window_by_t(data: np.ndarray, t_min: int, t_max: int) -> np.ndarray:
+    """Filter structured array by t in [t_min, t_max]."""
     t = data["t"]
     m = np.isfinite(t) & (t >= t_min) & (t <= t_max)
     return data[m]
 
 
-# -----------------------------
-# Parse heterogeneity params from comment lines
-# -----------------------------
-def parse_params_from_comments(comment_lines):
-    """
-    Tries to parse a line like:
-      # params: L=32, J=1.0, T=1.5, seed=0, alpha_mean=8.0, alpha_std=2.0, alpha_min=1e-06, steps=200000, ...
-    Returns dict with whatever it finds.
-    """
-    txt = "\n".join(comment_lines)
-
-    kv = re.findall(r"(\w+)\s*=\s*([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)", txt)
-    out = {}
-    for k, v in kv:
-        if k in {"L", "seed", "steps", "burn_in", "thin"}:
-            try:
-                out[k] = int(float(v))
-            except Exception:
-                out[k] = float(v)
-        else:
-            out[k] = float(v)
-    return out
-
-
-def reconstruct_alpha_grid_from_params(params):
-    """
-    Rebuild alpha_ij:
-      alpha_ij ~ Normal(alpha_mean, alpha_std), clipped to alpha_min
-    Uses (seed) and (L) if available.
-    """
-    L = int(params.get("L", 32))
-    seed = int(params.get("seed", 0))
-    alpha_mean = float(params.get("alpha_mean", 8.0))
-    alpha_std = float(params.get("alpha_std", 2.0))
-    alpha_min = float(params.get("alpha_min", 1e-6))
-
-    rng = np.random.default_rng(seed)
-    alpha_grid = rng.normal(loc=alpha_mean, scale=alpha_std, size=(L, L))
-    alpha_grid = np.clip(alpha_grid, alpha_min, None)
-    return alpha_grid
-
-
-# -----------------------------
-# Plotting
-# -----------------------------
-def plot_overlay_returns(base, het, outpath, t_min=10000, t_max=20000):
-    """
-    Overlay Fig.2-style returns r(t): baseline vs heterogeneity on the same time window.
-    Uses intersection of available t values to avoid mismatches due to burn-in.
-    """
+def plot_overlay_returns(base: np.ndarray, het: np.ndarray, outpath: str, t_min: int, t_max: int) -> None:
+    """Overlay returns r(t) in a shared time window; align on common t values."""
     b = window_by_t(base, t_min, t_max)
     h = window_by_t(het, t_min, t_max)
 
     if b.size == 0 or h.size == 0:
-        raise ValueError(
-            f"No overlap data for returns in [{t_min},{t_max}]. "
-            f"Baseline rows={b.size}, Hetero rows={h.size}."
-        )
+        raise ValueError(f"No data in window [{t_min},{t_max}]. baseline={b.size}, hetero={h.size}")
 
-    # build maps t -> r for safe alignment
-    bt = b["t"]
-    br = b["r"] if "r" in b.dtype.names else np.nan * np.ones_like(bt)
+    bt, br = b["t"], b["r"]
+    ht, hr = h["t"], h["r"]
 
-    ht = h["t"]
-    hr = h["r"] if "r" in h.dtype.names else np.nan * np.ones_like(ht)
-
-    # intersection times
     common_t = np.intersect1d(bt[np.isfinite(bt)], ht[np.isfinite(ht)])
     common_t = common_t[(common_t >= t_min) & (common_t <= t_max)]
-
     if common_t.size == 0:
-        raise ValueError(f"No common t values in [{t_min},{t_max}] between baseline and hetero.")
+        raise ValueError(f"No common t values in [{t_min},{t_max}].")
 
-    # index via dict (fast enough for these sizes)
     b_map = {int(t): r for t, r in zip(bt, br)}
     h_map = {int(t): r for t, r in zip(ht, hr)}
-
     r_base = np.array([b_map.get(int(t), np.nan) for t in common_t], dtype=float)
     r_het = np.array([h_map.get(int(t), np.nan) for t in common_t], dtype=float)
 
@@ -194,18 +103,19 @@ def plot_overlay_returns(base, het, outpath, t_min=10000, t_max=20000):
     plt.figure(figsize=(10, 3))
     plt.plot(common_t[mb], r_base[mb], lw=0.6, color="black", label="baseline")
     plt.plot(common_t[mh], r_het[mh], lw=0.6, color="red", alpha=0.8, label="heterogeneous α")
-    plt.xlabel("time (sweeps)")
+    plt.xlabel("time (steps)")
     plt.ylabel("return r(t)")
-    plt.title("Overlay — Returns time series (Fig. 2 style)")
+    plt.title("Overlay — Returns time series")
     plt.legend(frameon=False)
     plt.tight_layout()
     plt.savefig(outpath, dpi=300)
     plt.close()
 
 
-def plot_overlay_ccdf(abs_r_base, abs_r_het, outpath, scale=100.0):
-    Xb = scale * abs_r_base[np.isfinite(abs_r_base)]
-    Xh = scale * abs_r_het[np.isfinite(abs_r_het)]
+def plot_overlay_ccdf(base: np.ndarray, het: np.ndarray, outpath: str, scale: float) -> None:
+    """Overlay CCDF of scale*abs_r."""
+    Xb = scale * base["abs_r"]
+    Xh = scale * het["abs_r"]
 
     xb, yb = ccdf(Xb)
     xh, yh = ccdf(Xh)
@@ -222,14 +132,14 @@ def plot_overlay_ccdf(abs_r_base, abs_r_het, outpath, scale=100.0):
     plt.close()
 
 
-def plot_overlay_acf(abs_r_base, abs_r_het, outpath, max_lag=2000):
-    Vb = abs_r_base[np.isfinite(abs_r_base)]
-    Vh = abs_r_het[np.isfinite(abs_r_het)]
+def plot_overlay_acf(base: np.ndarray, het: np.ndarray, outpath: str, max_lag: int) -> None:
+    """Overlay volatility autocorrelation on log-log axes."""
+    Vb = base["abs_r"][np.isfinite(base["abs_r"])]
+    Vh = het["abs_r"][np.isfinite(het["abs_r"])]
 
     acb = autocorrelation(Vb, max_lag=max_lag)
     ach = autocorrelation(Vh, max_lag=max_lag)
 
-    # Yamano-style: start at T=1 and only positive values for log-log.
     lags_b = np.arange(1, len(acb), dtype=float)
     vals_b = acb[1:]
     mb = np.isfinite(vals_b) & (vals_b > 0)
@@ -243,83 +153,43 @@ def plot_overlay_acf(abs_r_base, abs_r_het, outpath, max_lag=2000):
     plt.figure(figsize=(6, 5))
     plt.loglog(lags_b, vals_b, lw=1.0, label="baseline", color="black")
     plt.loglog(lags_h, vals_h, lw=1.0, label="heterogeneous α", color="red")
-    plt.xlabel("Time (lag T)")
-    plt.ylabel("Autocorrelation function of volatility")
-    plt.title("Overlay — Volatility autocorrelation (log–log)")
+    plt.xlabel("lag")
+    plt.ylabel("autocorrelation of |ret|")
+    plt.title("Overlay — Volatility autocorrelation")
     plt.legend(frameon=False)
     plt.tight_layout()
     plt.savefig(outpath, dpi=300)
     plt.close()
 
 
-def plot_alpha_hist(alpha_grid, outpath):
-    a = alpha_grid.ravel()
-    a = a[np.isfinite(a)]
+def main() -> None:
+    ap = argparse.ArgumentParser(description="Overlay baseline vs heterogeneity figures.")
+    ap.add_argument("--baseline", type=str, default=os.path.join("data", "lattice_data_results_100000.csv"),
+                    help="Baseline CSV path.")
+    ap.add_argument("--hetero", type=str, default=os.path.join("data", "heterogeneity_data_results_100000.csv"),
+                    help="Heterogeneity CSV path.")
+    ap.add_argument("--outdir", type=str, default="results", help="Output directory for figures.")
+    ap.add_argument("--tmin", type=int, default=10_000)
+    ap.add_argument("--tmax", type=int, default=20_000)
+    ap.add_argument("--max_lag", type=int, default=2000)
+    ap.add_argument("--scale", type=float, default=100.0)
+    args = ap.parse_args()
 
-    plt.figure(figsize=(6, 4))
-    plt.hist(a, bins=40, edgecolor="black")
-    plt.xlabel("α")
-    plt.ylabel("count")
-    plt.title("Heterogeneity check — histogram of αᵢⱼ")
-    plt.tight_layout()
-    plt.savefig(outpath, dpi=300)
-    plt.close()
+    os.makedirs(args.outdir, exist_ok=True)
 
+    base = ensure_abs_r(load_csv(args.baseline))
+    het = ensure_abs_r(load_csv(args.hetero))
 
-# -----------------------------
-# Main
-# -----------------------------
-def main():
-    baseline_path = os.path.join("data", "intermediate.csv")
-    hetero_path = os.path.join("data", "intermediate_heterogeneity.csv")
+    # returns overlay needs r and t
+    for col in ("t", "r"):
+        if col not in base.dtype.names or col not in het.dtype.names:
+            raise ValueError(f"Both CSVs must contain '{col}' for returns overlay.")
 
-    outdir = "paper_figures"
-    os.makedirs(outdir, exist_ok=True)
+    plot_overlay_returns(base, het, os.path.join(args.outdir, "overlap_returns_timeseries.png"), args.tmin, args.tmax)
+    plot_overlay_ccdf(base, het, os.path.join(args.outdir, "overlap_ccdf_abs_returns.png"), args.scale)
+    plot_overlay_acf(base, het, os.path.join(args.outdir, "overlap_volatility_acf.png"), args.max_lag)
 
-    base, _ = load_csv_with_comments(baseline_path)
-    het, het_comments = load_csv_with_comments(hetero_path)
-
-    base = normalize_fieldnames(base)
-    het = normalize_fieldnames(het)
-
-    # --- Plot 0: Fig 2 overlay (returns time series) ---
-    plot_overlay_returns(
-        base=base,
-        het=het,
-        outpath=os.path.join(outdir, "overlap_fig2_returns_timeseries.png"),
-        t_min=10000,
-        t_max=20000,
-    )
-
-    # --- Plot 1: CCDF overlay ---
-    plot_overlay_ccdf(
-        abs_r_base=base["abs_r"],
-        abs_r_het=het["abs_r"],
-        outpath=os.path.join(outdir, "overlap_fig3_ccdf_abs_returns.png"),
-        scale=100.0,
-    )
-
-    # --- Plot 2: ACF overlay ---
-    plot_overlay_acf(
-        abs_r_base=base["abs_r"],
-        abs_r_het=het["abs_r"],
-        outpath=os.path.join(outdir, "overlap_fig4_volatility_acf.png"),
-        max_lag=2000,
-    )
-
-    # --- Plot 3: alpha histogram ---
-    params = parse_params_from_comments(het_comments)
-    alpha_grid = reconstruct_alpha_grid_from_params(params)
-    plot_alpha_hist(
-        alpha_grid=alpha_grid,
-        outpath=os.path.join(outdir, "heterogeneity_alpha_hist.png"),
-    )
-
-    print("[saved]")
-    print(f" - {os.path.join(outdir, 'overlap_fig2_returns_timeseries.png')}")
-    print(f" - {os.path.join(outdir, 'overlap_fig3_ccdf_abs_returns.png')}")
-    print(f" - {os.path.join(outdir, 'overlap_fig4_volatility_acf.png')}")
-    print(f" - {os.path.join(outdir, 'heterogeneity_alpha_hist.png')}")
+    print(f"Figures saved to '{args.outdir}/'")
 
 
 if __name__ == "__main__":

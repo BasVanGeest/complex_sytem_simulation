@@ -1,5 +1,4 @@
-import os
-import json
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -7,52 +6,30 @@ from matplotlib.animation import FuncAnimation
 from bornholdt_model import Bornholdt2D
 
 
-def load_params(path="params.json"):
-    # Paper defaults (Bornholdt Fig. 1 caption)
-    defaults = dict(
-        L=32,
-        J=1.0,
-        alpha=4.0,
-        T=1.5,          # paper uses T = 1/beta = 1.5  (beta = 1/T)
-        seed=0,
-        steps_per_frame=1,  # 1 "time step" = 1 Monte Carlo sweep (N async single-site updates)
-        n_frames=300,
-        interval_ms=60,
-        show="S",           # "S" or "C"
-    )
+def main() -> None:
+    """Animate Bornholdt2D lattice; press 't' to toggle S/C view."""
+    ap = argparse.ArgumentParser(description="Visualize Bornholdt 2D lattice dynamics.")
+    ap.add_argument("--L", type=int, default=32)
+    ap.add_argument("--J", type=float, default=1.0)
+    ap.add_argument("--alpha", type=float, default=4.0)
+    ap.add_argument("--T", type=float, default=1.5)
+    ap.add_argument("--seed", type=int, default=0)
 
-    if not os.path.exists(path):
-        return defaults
+    ap.add_argument("--steps-per-frame", type=int, default=1,
+                    help="Sweeps advanced per animation frame.")
+    ap.add_argument("--frames", type=int, default=300,
+                    help="Number of animation frames.")
+    ap.add_argument("--interval-ms", type=int, default=60,
+                    help="Delay between frames in milliseconds.")
+    ap.add_argument("--show", choices=["S", "C"], default="S",
+                    help="Initial view: S (buy/sell) or C (strategy).")
 
-    with open(path, "r", encoding="utf-8") as f:
-        user = json.load(f)
+    args = ap.parse_args()
 
-    out = defaults.copy()
-    for k, v in user.items():
-        if k in out:
-            out[k] = v
-    return out
+    model = Bornholdt2D(L=args.L, J=args.J, alpha=args.alpha, T=args.T, seed=args.seed)
 
-
-def main():
-    p = load_params("params.json")
-
-    # Force the paper parameters unless you intentionally override in params.json
-    L = int(p["L"])
-    J = float(p["J"])
-    alpha = float(p["alpha"])
-    T = float(p["T"])
-    seed = int(p["seed"])
-
-    steps_per_frame = int(p["steps_per_frame"])
-    n_frames = int(p["n_frames"])
-    interval_ms = int(p["interval_ms"])
-
-    model = Bornholdt2D(L=L, J=J, alpha=alpha, T=T, seed=seed)
-
-    # Toggle between showing S and C
-    state = {"show": p.get("show", "S")}  # 'S' or 'C'
-    t = {"step": 0}  # paper time index ~ sweeps
+    state = {"show": args.show}
+    t = {"step": 0}
 
     fig, ax = plt.subplots()
     ax.set_xticks([])
@@ -62,12 +39,10 @@ def main():
         return model.S if state["show"] == "S" else model.C
 
     def title():
-        if state["show"] == "S":
-            return "Bornholdt lattice: S (buy/sell)  [press 't' to toggle S/C]"
-        return "Bornholdt lattice: C (strategy)  [press 't' to toggle S/C]"
+        return f"Bornholdt lattice: {state['show']}  (press 't' to toggle S/C)"
 
-    ax.set_title(title())
     im = ax.imshow(grid(), cmap="bwr", vmin=-1, vmax=1, interpolation="nearest")
+    ax.set_title(title())
 
     txt = ax.text(
         0.02, 0.98, "", transform=ax.transAxes,
@@ -84,36 +59,31 @@ def main():
 
     fig.canvas.mpl_connect("key_press_event", on_key)
 
-    def update(_frame_idx):
-        # advance the model by Bornholdt time steps
-        for _ in range(steps_per_frame):
-            model.sweep()       # one sweep: N random-serial async heat-bath site updates; C updated immediately after each S
+    def update(_):
+        for _ in range(args.steps_per_frame):
+            model.sweep()
             t["step"] += 1
 
-        # update image + text
         im.set_data(grid())
-        M = model.M()
 
+        M = float(model.M())
         frac_buy = float(np.mean(model.S == 1))
-        frac_sell = float(np.mean(model.S == -1))
-        # Strategy tracking (Bornholdt: "keeps track of the ratio of strategy choices")
-        frac_chartist = model.frac_chartist() if hasattr(model, "frac_chartist") else float(np.mean(model.C == -1))
-        frac_fund = 1.0 - frac_chartist
+        frac_sell = 1.0 - frac_buy
+        chartist_frac = float(np.mean(model.C == -1))  # keep simplest: no hasattr
+        fund_frac = 1.0 - chartist_frac
         C_mean = float(np.mean(model.C))
 
         txt.set_text(
             f"t (sweeps): {t['step']}\n"
-            f"L={L}, J={J:g}, alpha={alpha:g}, T={T:g} (beta={1.0/T:.3f})\n"
+            f"L={args.L}, J={args.J:g}, alpha={args.alpha:g}, T={args.T:g} (beta={1.0/args.T:.3f})\n"
             f"M: {M:.3f}\n"
-            f"buy(+1): {frac_buy:.2f}   sell(-1): {frac_sell:.2f}\n"
-            f"fundamentalist(C=+1): {frac_fund:.2f}   chartist(C=-1): {frac_chartist:.2f}\n"
+            f"buy(+1): {frac_buy:.2f}  sell(-1): {frac_sell:.2f}\n"
+            f"fund(C=+1): {fund_frac:.2f}  chart(C=-1): {chartist_frac:.2f}\n"
             f"<C>: {C_mean:.3f}"
         )
         return im, txt
 
-    # Keep a reference so animation isn't garbage-collected
-    ani = FuncAnimation(fig, update, frames=n_frames, interval=interval_ms, blit=False)
-
+    ani = FuncAnimation(fig, update, frames=args.frames, interval=args.interval_ms, blit=False)
     plt.show()
 
 

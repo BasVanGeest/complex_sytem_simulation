@@ -47,6 +47,9 @@ Topology specific parameters:
   plot_figures_network.py auto-detects the CSV path if --data is not provided (network_run.csv preferred).
   visualize_network.py reads overrides from params_network.json if present; otherwise uses baked defaults:
 
+- **`__init__`**  
+  Marks this directory as a Python module.
+
 ## Dependencies
 
 Packages:
@@ -62,6 +65,32 @@ Scripts assume a writable `data/` and `paper_figures_network/` directory.
 
 ## Run Order
 
-Simulate with run_networks.py (uses model_network.py to generate network_run.csv
-Generate figures from the simulation CSV with plot_figures_network.py, network_run.csv --outdir paper_figures_network --prefix network_
-Optional Live animation using the same model, python visualize_network.py
+Run network simulations:
+python code/bornholdt_network/run_networks.py --steps 50000
+
+By default, this runs all three topologies (ER, BA, WS) and produces:
+data/ER_data_results_50000.csv
+data/BA_data_results_50000.csv
+data/WS_data_results_50000.csv
+
+Each CSV contains the same schema as the lattice baseline, enabling direct comparison.
+
+How to run one topology only:
+python code/bornholdt_network/run_networks.py --steps 50000 --topology ER
+
+Example with explicit parameters:
+python run_networks.py  --steps 100000  --topology WS  --L 32  --k 6  --p 0.1  --alpha 8  --T 1.5  --seed 0
+(The number of nodes is always N = L × L, to keep same nodes as cells in the lattice)
+
+How to generate figures from a network run:
+python code/bornholdt_network/plot_figures_networks.py --data data/ER_data_results_50000.csv
+This generates and saves the following figures into results folder:
+ER_returns_timeseries.png
+ER_ccdf_abs_returns.png
+ER_volatility_autocorr.png
+ER_chartist_fraction_vs_volatility.png
+
+(Optional) Interactive network visualization: 
+python visualize_networks.py --topology ER --p 0.01
+python visualize_networks.py --topology BA --m 2
+python visualize_networks.py --topology WS --k 6 --p 0.05

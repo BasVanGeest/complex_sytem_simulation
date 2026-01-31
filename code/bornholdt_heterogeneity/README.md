@@ -45,10 +45,26 @@ Standard library: `argparse`, `os`, `re`, `io`
 
 ## Run Order
 
-Generate heterogeneity data: intermediate_heterogeneity.csv \
-Key options: --L (size), --steps (sweeps), --burn_in, --thin, --alpha_mean/std/min, --seed. \
-CSV columns: t, M, r, abs_r, C_mean, chartist_frac, fundamentalist_frac. \
-Ensure baseline CSV intermediate.csv exists (comes from baseline model in code/bornholdt_2d). \
-Make overlay figures: plot_overlap_figures.py \
-Outputs: overlap_fig2_returns_timeseries.png, overlap_fig3_ccdf_abs_returns.png, overlap_fig4_volatility_acf.png, heterogeneity_alpha_hist.png. \
-Optional live visualization: visualize_latt_heterogeneity.py. \
+Generate heterogeneous-α simulation data:
+python code/bornholdt_heterogeneity/run_heterogeneity.py --steps 50000
+This will save the csv output in the data folder and it will be called heterogeneity_data_results_50000.csv
+Key parameters: --L (lattice size), --steps (number of sweeps), --burn_in, --thin, --alpha_mean, --alpha_std, --alpha_min, --T, --J, --seed. 
+To generate overlap figures (baseline vs heterogeneity):
+Default command:python code/bornholdt_heterogeneity/plot_overlap_figures.py
+By default, this script reads:
+data/lattice_data_results_100000.csv
+data/heterogeneity_data_results_100000.csv
+and writes overlay figures in the results folder.
+To specify different files:
+python code/bornholdt_heterogeneity/plot_overlap_figures.py --baseline data/lattice_data_results_50000.csv  --hetero   data/heterogeneity_data_results_50000.csv
+
+Generated figures include:
+ - overlay of returns time series,
+ - overlay of CCDF(|r|),
+ - overlay of volatility autocorrelation.
+
+(Optional) Interactive lattice visualization:
+python code/bornholdt_heterogeneity/visualize_lattice_heterogeneity.py
+Override parameters if desired:
+python code/bornholdt_heterogeneity/visualize_lattice_heterogeneity.py --alpha-mean 8 --alpha-std 2 --T 1.2
+

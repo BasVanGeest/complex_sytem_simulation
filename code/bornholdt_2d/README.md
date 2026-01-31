@@ -26,14 +26,6 @@ This repository contains a 2D Bornholdt spin-market model implemented on an L×L
   - decision spins **S**
   - strategy spins **C**
 
-- **`run_models.py`**  
-  General runner that can simulate either:
-  - the lattice (`Bornholdt2D`), or
-  - network topologies (BA/ER/WS) via the package `bornholdt_network`.
-
-  Writes a CSV with the same schema as `run_baseline.py`.  
-  If `--out` is not provided, it auto-builds an output name under `../../data/`.
-
 - **`__init__.py`**  
   Empty marker so the directory can be imported as a package.
 
@@ -48,10 +40,15 @@ No external data files are required. Outputs will be created locally.
 
 ## Run Order
 
-Generate data: intermediate.csv --steps 200000 --burn_in 10000 --thin 1 --L 32 --J 1 --alpha 8 --T 1.5 --seed 0 \
-Creates data/ if missing; first row(s) have NaN for returns because r(t) needs two magnetization points. \
-Make figures: python plot_paper_figures.py \
-Expects intermediate.csv; outputs PNGs to paper_figures/. \
-Optional visualization: python visualize_lattice.py \
-Uses defaults mirroring the paper unless overridden in params.json; interactive window, no files written. \
-Alternative network runs: ba_20k.csv
+Run a baseline lattice simulation: python code/bornholdt_2d/run_baseline.py
+This will: a csv file called "lattice_data_results_50000.csv" in the data folder.
+Example with parameters:
+python code/bornholdt_2d/run_baseline.py --steps 50000 --burn_in 10000  --thin 1 --L 32 --J 1.0 --alpha 8.0  --T 1.5 --seed 0
+
+To generate the figures:
+python code/bornholdt_2d/plot_paper_figures.py --data data/lattice_data_results_50000.csv
+This will save the figures in the results folder.
+
+To visualize the lattice:
+python code/bornholdt_2d/visualize_lattice.py
+(Override parameters if desired: --L 64 --alpha 8 --T 1.2)

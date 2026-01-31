@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -5,158 +6,112 @@ from matplotlib.animation import FuncAnimation
 from bornholdt_heterogeneity import Bornholdt2D_heterogeneity
 
 
-# ============================================================
-# Default parameters (edit here if needed)
-# ============================================================
+def main() -> None:
+    """Animate heterogeneous-α Bornholdt lattice. Keys: t (S/C), a (α-field)."""
+    ap = argparse.ArgumentParser(description="Visualize heterogeneous-α Bornholdt lattice.")
+    ap.add_argument("--L", type=int, default=32)
+    ap.add_argument("--J", type=float, default=1.0)
+    ap.add_argument("--T", type=float, default=1.5)
+    ap.add_argument("--seed", type=int, default=0)
 
-L = 32
-J = 1.0
-T = 1.5
-seed = 0
+    ap.add_argument("--alpha-mean", type=float, default=8.0)
+    ap.add_argument("--alpha-std", type=float, default=2.0)
+    ap.add_argument("--alpha-min", type=float, default=1e-6)
 
-# --- heterogeneous alpha parameters ---
-alpha_mean = 8.0
-alpha_std = 2.0          # variance = 4.0 (moderate heterogeneity)
-alpha_min = 1e-6         # enforce positivity
-
-# --- animation parameters ---
-steps_per_frame = 1      # sweeps per animation frame
-n_frames = 300
-interval_ms = 60
-
-# initial view: "S", "C", or "A"
-initial_show = "S"
-
-
-# ============================================================
-# Main visualization
-# ============================================================
-
-def main():
-    """Animate the heterogeneous-α Bornholdt lattice model.
-
-    Interactive keys:
-    - 't' toggles the displayed grid between S (buy/sell) and C (strategy).
-    - 'a' toggles the displayed grid to the quenched α-field.
-    Shows summary stats (M, strategy fractions, α stats) in an on-plot text box.
-    """
+    ap.add_argument("--steps-per-frame", type=int, default=1)
+    ap.add_argument("--frames", type=int, default=300)
+    ap.add_argument("--interval-ms", type=int, default=60)
+    ap.add_argument("--show", choices=["S", "C", "A"], default="S",
+                    help="Initial view: S (spins), C (strategy), A (alpha field).")
+    args = ap.parse_args()
 
     model = Bornholdt2D_heterogeneity(
-        L=L,
-        J=J,
-        T=T,
-        seed=seed,
-        alpha_mean=alpha_mean,
-        alpha_std=alpha_std,
-        alpha_min=alpha_min,
+        L=args.L,
+        J=args.J,
+        T=args.T,
+        seed=args.seed,
+        alpha_mean=args.alpha_mean,
+        alpha_std=args.alpha_std,
+        alpha_min=args.alpha_min,
     )
 
-    state = {"show": initial_show}
-    t = {"step": 0}
+    state = {"show": args.show}
+    step = {"t": 0}
 
     fig, ax = plt.subplots()
     ax.set_xticks([])
     ax.set_yticks([])
 
-    def grid():
-        """Return the 2D array currently selected for display (S, C, or mean-field)."""
-
+    def get_grid():
         if state["show"] == "S":
             return model.S
         if state["show"] == "C":
             return model.C
-        return model.alpha   # "A"
+        return model.alpha  # A
 
-    def title():
-        """Return a plot title string matching the current display mode (S, C, or α)."""
-
-        if state["show"] == "S":
-            return "Heterogeneous-α Bornholdt: S (buy/sell)   [t: S/C, a: α]"
-        if state["show"] == "C":
-            return "Heterogeneous-α Bornholdt: C (strategy)   [t: S/C, a: α]"
-        return "Heterogeneous-α Bornholdt: α-field (quenched)   [t: S/C, a: α]"
-
-    ax.set_title(title())
-
-    # initialize image
-    if state["show"] in ("S", "C"):
-        im = ax.imshow(grid(), cmap="bwr", vmin=-1, vmax=1, interpolation="nearest")
-    else:
-        im = ax.imshow(grid(), cmap="viridis", interpolation="nearest")
-        a = model.alpha
-        im.set_clim(a.min(), a.max())
-
-    txt = ax.text(
-        0.02, 0.98, "", transform=ax.transAxes,
-        va="top", ha="left", fontsize=10,
-        bbox=dict(facecolor="white", alpha=0.7, edgecolor="none"),
-    )
-
-    def refresh():
-        """Refresh the image data, title, and colormap/clim based on the current display mode."""
-
-        im.set_data(grid())
-        ax.set_title(title())
-        if state["show"] in ("S", "C"):
+    def set_mode(mode: str):
+        state["show"] = mode
+        ax.set_title(
+            f"Heterogeneous-α Bornholdt: {mode}   [t: S/C, a: α]"
+            if mode != "A"
+            else "Heterogeneous-α Bornholdt: α-field (quenched)   [t: S/C, a: α]"
+        )
+        im.set_data(get_grid())
+        if mode in ("S", "C"):
             im.set_cmap("bwr")
             im.set_clim(-1, 1)
         else:
             im.set_cmap("viridis")
             a = model.alpha
-            im.set_clim(a.min(), a.max())
+            im.set_clim(float(a.min()), float(a.max()))
+        fig.canvas.draw_idle()
+
+    # initialize image
+    im = ax.imshow(get_grid(), interpolation="nearest")
+    txt = ax.text(
+        0.02, 0.98, "", transform=ax.transAxes,
+        va="top", ha="left", fontsize=10,
+        bbox=dict(facecolor="white", alpha=0.7, edgecolor="none"),
+    )
+    set_mode(state["show"])
 
     def on_key(event):
-        """Handle key presses to switch between S/C view"""
-
         if event.key == "t":
-            state["show"] = "C" if state["show"] == "S" else "S"
-            refresh()
-            fig.canvas.draw_idle()
+            set_mode("C" if state["show"] == "S" else "S")
         elif event.key == "a":
-            state["show"] = "A" if state["show"] != "A" else "S"
-            refresh()
-            fig.canvas.draw_idle()
+            set_mode("A" if state["show"] != "A" else "S")
 
     fig.canvas.mpl_connect("key_press_event", on_key)
 
     def update(_):
-        """Animation callback: advance the simulation, refresh the plot, and update the stats overlay."""
-
-        for _ in range(steps_per_frame):
+        for _ in range(args.steps_per_frame):
             model.sweep()
-            t["step"] += 1
+            step["t"] += 1
 
-        refresh()
+        # update grid only (colormap handled in set_mode)
+        im.set_data(get_grid())
 
-        M = model.M()
-        frac_buy = np.mean(model.S == 1)
-        frac_chartist = model.frac_chartist()
+        M = float(model.M())
+        frac_buy = float(np.mean(model.S == 1))
+        frac_chartist = float(model.frac_chartist())
         frac_fund = 1.0 - frac_chartist
-        C_mean = np.mean(model.C)
+        C_mean = float(np.mean(model.C))
 
         a = model.alpha
         txt.set_text(
-            f"t (sweeps): {t['step']}\n"
-            f"L={L}, J={J}, T={T} (beta={1.0/T:.3f})\n"
-            f"α_ij ~ Normal({alpha_mean}, {alpha_std}²), quenched\n"
-            f"α stats: mean={a.mean():.2f}, std={a.std():.2f}, "
-            f"min={a.min():.2f}, max={a.max():.2f}\n"
+            f"t (sweeps): {step['t']}\n"
+            f"L={args.L}, J={args.J:g}, T={args.T:g} (beta={1.0/args.T:.3f})\n"
+            f"α ~ Normal({args.alpha_mean:g}, {args.alpha_std:g}²), clipped ≥ {args.alpha_min:g}\n"
+            f"α stats: mean={a.mean():.2f}, std={a.std():.2f}, min={a.min():.2f}, max={a.max():.2f}\n"
             f"M: {M:.3f}\n"
             f"buy(+1): {frac_buy:.2f}\n"
-            f"fundamentalist: {frac_fund:.2f}   chartist: {frac_chartist:.2f}\n"
+            f"fund: {frac_fund:.2f}   chart: {frac_chartist:.2f}\n"
             f"<C>: {C_mean:.3f}\n"
-            f"[keys] t: toggle S/C   a: toggle α"
+            f"[keys] t: S/C   a: α"
         )
         return im, txt
 
-    ani = FuncAnimation(
-        fig,
-        update,
-        frames=n_frames,
-        interval=interval_ms,
-        blit=False,
-    )
-
+    _ani = FuncAnimation(fig, update, frames=args.frames, interval=args.interval_ms, blit=False)
     plt.show()
 
 

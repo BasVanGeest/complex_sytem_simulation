@@ -1,6 +1,3 @@
-# visualize_network.py
-import os
-import json
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,125 +8,65 @@ from model_network import BornholdtNetwork
 from networks import create_network
 
 
-def load_params(path: str = "params_network.json"):
-    defaults = dict(
-        net_type="WS",
-        L=32,
-        n=None,
-        m=2,
-        k=4,
-        p=0.1,
-        J=1.0,
-        alpha=8.0,
-        T=1.5,
-        seed=0,
-        steps_per_frame=1,
-        n_frames=300,
-        interval_ms=60,
-        show="S",
-        layout="spring",
-        node_size=120,
-        edge_alpha=0.25,
-    )
+def main() -> None:
+    ap = argparse.ArgumentParser(description="Visualize Bornholdt dynamics on a network (ER/BA/WS).")
+    ap.add_argument("--topology", choices=["ER", "BA", "WS"], required=True,
+                    help="Network topology to simulate.")
+    ap.add_argument("--L", type=int, default=16, help="N = L*L nodes (default: 16 -> 256 nodes).")
+    ap.add_argument("--seed", type=int, default=0)
 
-    if not os.path.exists(path):
-        return defaults
+    # Network parameters
+    ap.add_argument("--m", type=int, default=2, help="BA: edges per new node.")
+    ap.add_argument("--k", type=int, default=4, help="WS: nearest neighbors (even).")
+    ap.add_argument("--p", type=float, default=0.01, help="ER: p, WS: rewiring p.")
 
-    with open(path, "r", encoding="utf-8") as f:
-        user = json.load(f)
+    # Model parameters
+    ap.add_argument("--J", type=float, default=1.0)
+    ap.add_argument("--alpha", type=float, default=8.0)
+    ap.add_argument("--T", type=float, default=1.5)
 
-    out = defaults.copy()
-    out.update({k: v for k, v in user.items() if k in out})
-    return out
+    # Animation parameters
+    ap.add_argument("--steps-per-frame", type=int, default=1)
+    ap.add_argument("--frames", type=int, default=300)
+    ap.add_argument("--interval-ms", type=int, default=60)
+    ap.add_argument("--layout", choices=["spring", "circular", "kamada_kawai"], default="spring")
+    ap.add_argument("--node-size", type=int, default=80)
+    ap.add_argument("--edge-alpha", type=float, default=0.2)
+    ap.add_argument("--show", choices=["S", "C"], default="S", help="Initial view: S or C.")
+    args = ap.parse_args()
 
+    topo = args.topology.upper()
+    N = args.L * args.L
 
-def main():
-    parser = argparse.ArgumentParser(description="Visualize Bornholdt network dynamics")
+    G = create_network(net_type=topo, n=N, seed=args.seed, m=args.m, k=args.k, p=args.p)
+    model = BornholdtNetwork(G, J=args.J, alpha=args.alpha, T=args.T, seed=args.seed)
 
-    parser.add_argument("--topology", choices=["BA", "ER", "WS"], help="Network topology")
-    parser.add_argument("--L", type=int, help="Linear size (N = L*L)")
-    parser.add_argument("--n", type=int, help="Number of nodes (overrides L*L)")
-    parser.add_argument("--m", type=int, help="BA parameter")
-    parser.add_argument("--k", type=int, help="WS parameter")
-    parser.add_argument("--p", type=float, help="ER / WS parameter")
-    parser.add_argument("--seed", type=int, help="Random seed")
-
-    args = parser.parse_args()
-
-    # Load defaults / JSON
-    p = load_params()
-
-    # CLI overrides JSON/defaults
-    if args.topology is not None:
-        p["net_type"] = args.topology
-    if args.L is not None:
-        p["L"] = args.L
-    if args.n is not None:
-        p["n"] = args.n
-    if args.m is not None:
-        p["m"] = args.m
-    if args.k is not None:
-        p["k"] = args.k
-    if args.p is not None:
-        p["p"] = args.p
-    if args.seed is not None:
-        p["seed"] = args.seed
-
-    net_type = p["net_type"].upper()
-    seed = int(p["seed"])
-
-    # N = n or L*L
-    if p["n"] is None:
-        n = int(p["L"]) ** 2
+    # Layout
+    if args.layout == "circular":
+        pos = nx.circular_layout(G)
+    elif args.layout == "kamada_kawai":
+        pos = nx.kamada_kawai_layout(G)
     else:
-        n = int(p["n"])
+        pos = nx.spring_layout(G, seed=args.seed)
 
-    # Build network (same factory as run_network)
-    G = create_network(
-        net_type=net_type,
-        n=n,
-        seed=seed,
-        m=int(p["m"]),
-        k=int(p["k"]),
-        p=float(p["p"]),
-    )
-
-    model = BornholdtNetwork(
-        G,
-        J=float(p["J"]),
-        alpha=float(p["alpha"]),
-        T=float(p["T"]),
-        seed=seed,
-    )
-
-    steps_per_frame = int(p["steps_per_frame"])
-    n_frames = int(p["n_frames"])
-    interval_ms = int(p["interval_ms"])
-
-    state = {"show": p["show"].upper()}
+    state = {"show": args.show}
     t = {"step": 0}
 
     fig, ax = plt.subplots()
     ax.axis("off")
 
-    if p["layout"] == "circular":
-        pos = nx.circular_layout(G)
-    elif p["layout"] == "kamada_kawai":
-        pos = nx.kamada_kawai_layout(G)
-    else:
-        pos = nx.spring_layout(G, seed=seed)
+    edges = nx.draw_networkx_edges(G, pos, ax=ax, alpha=args.edge_alpha)
 
-    def node_colors():
+    def colors():
         spins = model.S if state["show"] == "S" else model.C
         return np.where(spins == 1, "red", "blue")
 
     nodes = nx.draw_networkx_nodes(
         G, pos,
-        node_color=node_colors(),
-        node_size=int(p["node_size"]),
+        node_color=colors(),
+        node_size=args.node_size,
         ax=ax,
     )
-    nx.draw_networkx_edges(G, pos, alpha=float(p["edge_alpha"]), ax=ax)
 
     txt = ax.text(
         0.02, 0.98, "", transform=ax.transAxes,
@@ -140,34 +77,28 @@ def main():
     def on_key(event):
         if event.key == "t":
             state["show"] = "C" if state["show"] == "S" else "S"
-            nodes.set_facecolor(node_colors())
+            nodes.set_facecolor(colors())
             fig.canvas.draw_idle()
 
     fig.canvas.mpl_connect("key_press_event", on_key)
 
     def update(_):
-        for _ in range(steps_per_frame):
-            model.time_step()
+        for _ in range(args.steps_per_frame):
+            model.time_step()  # one sweep
             t["step"] += 1
 
-        nodes.set_facecolor(node_colors())
+        nodes.set_facecolor(colors())
 
-        M = model.magnetization_M()
         txt.set_text(
-            f"t={t['step']}\n"
-            f"net={net_type}, N={model.N}\n"
-            f"M={M:.3f}"
+            f"topology={topo}, N={model.N}\n"
+            f"view={state['show']} (press 't' to toggle)\n"
+            f"t={t['step']}, M={model.M():.3f}"
         )
-        return nodes, txt
+        return nodes, txt, edges
 
-    ani = FuncAnimation(
-        fig,
-        update,
-        frames=n_frames,
-        interval=interval_ms,
-    )
+    _ani = FuncAnimation(fig, update, frames=args.frames, interval=args.interval_ms, blit=False)
     plt.show()
 
 
 if __name__ == "__main__":
-    main() 
+    main()
