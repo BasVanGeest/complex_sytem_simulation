@@ -5,8 +5,6 @@ Includes a CLI runner to generate a standardized time-series CSV, a plotting scr
 
 To keep run times below 30 minutes we recommend not excedding 200,000 steps. 
 
----
-
 ## Folder Overview
 
 - **`model_network.py`**  
@@ -48,8 +46,6 @@ To keep run times below 30 minutes we recommend not excedding 200,000 steps.
   Thinning and burn-in are handled in-loop before writing.
   plot_figures_network.py auto-detects the CSV path if --data is not provided (network_run.csv preferred).
   visualize_network.py reads overrides from params_network.json if present; otherwise uses baked defaults:
-
----
 
 ## Dependencies
 
