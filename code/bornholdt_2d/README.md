@@ -48,10 +48,10 @@ No external data files are required. Outputs will be created locally.
 
 ## Run Order
 
-Generate data: intermediate.csv --steps 200000 --burn_in 10000 --thin 1 --L 32 --J 1 --alpha 8 --T 1.5 --seed 0
-Creates data/ if missing; first row(s) have NaN for returns because r(t) needs two magnetization points.
-Make figures: python plot_paper_figures.py
-Expects intermediate.csv; outputs PNGs to paper_figures/.
-Optional visualization: python visualize_lattice.py
-Uses defaults mirroring the paper unless overridden in params.json; interactive window, no files written.
+Generate data: intermediate.csv --steps 200000 --burn_in 10000 --thin 1 --L 32 --J 1 --alpha 8 --T 1.5 --seed 0 \
+Creates data/ if missing; first row(s) have NaN for returns because r(t) needs two magnetization points. \
+Make figures: python plot_paper_figures.py \
+Expects intermediate.csv; outputs PNGs to paper_figures/. \
+Optional visualization: python visualize_lattice.py \
+Uses defaults mirroring the paper unless overridden in params.json; interactive window, no files written. \
 Alternative network runs: ba_20k.csv
