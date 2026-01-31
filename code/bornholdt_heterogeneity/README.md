@@ -1,70 +1,118 @@
-# Bornholdt Heterogeneity Model
+## Bornholdt Model with Agent Heterogeneity
+This folder contains an extension of the 2D Bornholdt spin-market model in which agents differ in their sensitivity to global market pressure. Each agent is assigned an **agent-specific contrarian strength** αij\alpha_{ij}αij​, drawn at initialization and kept fixed throughout the simulation.
 
-Asynchronous 2D Bornholdt market-spin model with **quenched heterogeneous** \(\alpha_{ij}\).  
-The heterogeneity field \(\alpha_{ij}\) is drawn from a Normal(mean, std) distribution and clipped to be > 0, then held fixed for the full simulation.
+The model uses asynchronous single-site heat-bath updates on a periodic L×LL \times LL×L lattice and produces time series of magnetization, returns, and strategy composition. Additional scripts allow direct comparison with the baseline model.
 
-Produces time series of magnetization, and strategy composition, plus scripts for overlay plots and interactive lattice animation.
+----------
 
----
+## Folder Contents
 
-## Folder Overview
+-   **`bornholdt_heterogeneity.py`**  
+    Core implementation of the heterogeneous 2D Bornholdt model.  
+    Responsibilities include:
+    
+    -   drawing and storing the agent-specific αij\alpha_{ij}αij​ field
+        
+    -   performing random-serial asynchronous sweeps
+        
+    -   running simulations
+        
+    -   computing observables such as magnetization `M`, returns `r`, mean strategy `C_mean`, and chartist/fundamentalist fractions
+        
+-   **`run_heterogeneity.py`**  
+    Command-line interface to run a single heterogeneous simulation.  
+    Writes one CSV file with headers and records all run parameters as comment lines at the top of the file.
+    
+-   **`plot_overlap_figures.py`**  
+    Reads a baseline CSV and a heterogeneity CSV and produces overlay figures in `paper_figures/`, including:
+    
+    -   return time series overlays
+        
+    -   CCDFs of |r|
+        
+    -   volatility autocorrelation overlays
+        
+    -   histogram of the α\alphaα distribution
+        
+-   **`visualize_lattice_heterogeneity.py`**  
+    Interactive Matplotlib visualization of the lattice fields.  
+    Keyboard controls:
+    
+    -   `t`: toggle between decision spins SSS and strategy spins CCC
+        
+    -   `a`: toggle visualization of the α\alphaα field
+        
+-   **`__init__.py`**  
+    Marks the directory as a Python package.
+    
 
-- **`bornholdt_heterogeneity.py`**  
-  Core `Bornholdt2D_heterogeneity` model:
-  - draws and stores the quenched \(\alpha_{ij}\) field
-  - performs one sweep (random-serial asynchronous updates)
-  - runs simulations
-  - computes observables (e.g., `M`, return `r`, `C_mean`, chartist/fundamentalist fractions)
-
-- **`run_heterogeneity.py`**  
-  CLI runner for a single heterogeneity simulation.  
-  Writes one CSV with headers and includes the run parameters in CSV **comment lines**.
-
-- **`plot_overlap_figures.py`**  
-  Reads:
-  - baseline `intermediate.csv`
-  - heterogeneity `intermediate_heterogeneity.csv`  
-  and creates overlay figures + an \(\alpha\) histogram into `paper_figures/`.
-
-- **`visualize_latt_heterogeneity.py`**  
-  Interactive Matplotlib animation of the lattice fields:
-  - `t` toggles S ↔ C
-  - `a` toggles α view
-
-- **`__init__.py`**  
-  Empty marker so the directory can be imported as a package.
-
----
+----------
 
 ## Dependencies
 
-- `numpy`
-- `matplotlib`
+-   `numpy`
+    
+-   `matplotlib`
+    
 
-Standard library: `argparse`, `os`, `re`, `io`
+Standard library modules: `argparse`, `os`, `re`, `io`
 
-## Run Order
+----------
 
-Generate heterogeneous-α simulation data:
-python code/bornholdt_heterogeneity/run_heterogeneity.py --steps 50000
-This will save the csv output in the data folder and it will be called heterogeneity_data_results_50000.csv
-Key parameters: --L (lattice size), --steps (number of sweeps), --burn_in, --thin, --alpha_mean, --alpha_std, --alpha_min, --T, --J, --seed. 
-To generate overlap figures (baseline vs heterogeneity):
-Default command:python code/bornholdt_heterogeneity/plot_overlap_figures.py
-By default, this script reads:
-data/lattice_data_results_100000.csv
-data/heterogeneity_data_results_100000.csv
-and writes overlay figures in the results folder.
+## How to Run
+
+### 1. Run a heterogeneous simulation
+
+`python code/bornholdt_heterogeneity/run_heterogeneity.py --steps 50000` 
+
+This generates a CSV file named:
+
+`heterogeneity_data_results_50000.csv` 
+
+in the `data/` folder.
+
+Key parameters include:  
+`--L`, `--steps`, `--burn_in`, `--thin`, `--alpha_mean`, `--alpha_std`, `--alpha_min`, `--T`, `--J`, `--seed`.
+
+----------
+
+### 2. Generate overlay figures (baseline vs heterogeneity)
+
+Default usage:
+
+`python code/bornholdt_heterogeneity/plot_overlap_figures.py` 
+
+By default, this reads:
+
+`data/lattice_data_results_100000.csv
+data/heterogeneity_data_results_100000.csv` 
+
+and writes overlay figures to the `results/` folder.
+
 To specify different files:
-python code/bornholdt_heterogeneity/plot_overlap_figures.py --baseline data/lattice_data_results_50000.csv  --hetero   data/heterogeneity_data_results_50000.csv
 
-Generated figures include:
- - overlay of returns time series,
- - overlay of CCDF(|r|),
- - overlay of volatility autocorrelation.
+`python code/bornholdt_heterogeneity/plot_overlap_figures.py \
+  --baseline data/lattice_data_results_50000.csv \
+  --hetero data/heterogeneity_data_results_50000.csv` 
 
-(Optional) Interactive lattice visualization:
-python code/bornholdt_heterogeneity/visualize_lattice_heterogeneity.py
-Override parameters if desired:
-python code/bornholdt_heterogeneity/visualize_lattice_heterogeneity.py --alpha-mean 8 --alpha-std 2 --T 1.2
+----------
 
+### 3. Interactive lattice visualization (optional)
+
+`python code/bornholdt_heterogeneity/visualize_lattice_heterogeneity.py` 
+
+Optional parameter overrides:
+
+`python code/bornholdt_heterogeneity/visualize_lattice_heterogeneity.py \
+  --alpha-mean 8 --alpha-std 2 --T 1.2` 
+
+----------
+
+### Notes
+
+-   Agent heterogeneity is **fixed over time** and assigned at initialization.
+    
+-   The same observables and figures as in the baseline model are used, enabling direct comparison.
+    
+-   Recommended parameter ranges are chosen to balance qualitative behavior and runtime.
+  

@@ -8,8 +8,8 @@ from bornholdt_heterogeneity import Bornholdt2D_heterogeneity
 def main() -> None:
     """Run heterogeneous-alpha Bornholdt2D and save one CSV into ./data/."""
     ap = argparse.ArgumentParser(description="Run heterogeneous-alpha Bornholdt2D and save a CSV in ./data/.")
-    ap.add_argument("--steps", type=int, default=100_000)
-    ap.add_argument("--burn_in", type=int, default=10_000)
+    ap.add_argument("--steps", type=int, default=50_000)
+    ap.add_argument("--burn_in", type=int, default=5_000)
     ap.add_argument("--thin", type=int, default=1)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--eps", type=float, default=1e-6)

@@ -1,54 +1,128 @@
-# Bornholdt Baseline Spin-Market Model
+## Bornholdt Baseline 2D Spin-Market Model
 
-This repository contains a 2D Bornholdt spin-market model implemented on an L×L periodic lattice with asynchronous single site heat-bath updates, plus scripts to run simulations and reproduce paper-style figures. We recommend not simulating more than 200,000 steps to keep run time under 30 minutes.
+This folder contains an implementation of the **baseline Bornholdt spin-market model** on a two-dimensional L×L periodic lattice. Agents are updated asynchronously using single-site heat-bath dynamics. The code is designed to reproduce the qualitative figures reported in the original Bornholdt and Yamano papers.
 
-## Folder Overview
+Simulation scripts are provided to generate time series data and paper-style figures.
 
-- **`bornholdt_model.py`**  
-  Core 2D Bornholdt spin-market model.  
-  Creates `simulate`, `sweep`, and helpers (e.g., magnetization `M`, `frac_chartist`, etc.).
+> **Runtime note:** To keep execution time below ~30 minutes on a standard laptop, we recommend running no more than **200,000 Monte Carlo sweeps**.
 
-- **`run_baseline.py`**  
-  CLI to run a single lattice simulation and write one CSV (default: `intermediate.csv`).  
-  Controls: `steps`, `burn_in`, `thin`, `seed`, and model parameters (`L`, `J`, `alpha`, `T`).  
-  Outputs:  
-  `t, M, r, abs_r, C_mean, chartist_frac, fundamentalist_frac`
+----------
 
-- **`plot_paper_figures.py`**  
-  Reads the baseline CSV and generates the figures listed below into `paper_figures/`:
-  1. Returns time series  
-  2. CCDF of `|r|`  
-  3. Volatility autocorrelation  
-  4. Chartist fraction vs volatility
+## Folder Contents
 
-- **`visualize_lattice.py`**  
-  A live Matplotlib animation of the lattice. Press **`t`** to toggle between:
-  - decision spins **S**
-  - strategy spins **C**
+-   **`bornholdt_model.py`**  
+    Core implementation of the 2D Bornholdt model.  
+    Defines the main simulation logic, including:
+    
+    -   `simulate` and `sweep` routines
+        
+    -   observables such as magnetization `M`
+        
+    -   strategy composition (`frac_chartist`, etc.)
+        
+-   **`run_baseline.py`**  
+    Command-line interface to run a single lattice simulation and write results to CSV.  
+    Configurable parameters include:
+    
+    -   simulation control: `steps`, `burn_in`, `thin`, `seed`
+        
+    -   model parameters: `L`, `J`, `alpha`, `T`
+        
+    
+    **Output columns:**
+    
+    `t, M, r, abs_r, C_mean, chartist_frac, fundamentalist_frac` 
+    
+-   **`plot_paper_figures.py`**  
+    Reads a baseline CSV file and generates paper-style figures in `paper_figures/`:
+    
+    1.  Return time series
+        
+    2.  CCDF of |r|
+        
+    3.  Volatility autocorrelation (of |r|)
+        
+    4.  Chartist fraction versus volatility
+        
+-   **`visualize_lattice.py`**  
+    Interactive Matplotlib visualization of the lattice.  
+    Press **`t`** to toggle between:
+    
+    -   decision spins SSS
+        
+    -   strategy spins CCC
+        
+-   **`__init__.py`**  
+    Allows the directory to be imported as a Python package.
+    
 
-- **`__init__.py`**  
-  Empty marker so the directory can be imported as a package.
+----------
 
 ## Dependencies
 
-- `numpy`
-- `matplotlib`
-- `tqdm`
-- `networkx`
+Required Python packages:
 
-No external data files are required. Outputs will be created locally.
+-   `numpy`
+    
+-   `matplotlib`
+    
+-   `tqdm`
+    
+-   `networkx`
+    
 
-## Run Order
+No external data files are required. All outputs are generated locally.
 
-Run a baseline lattice simulation: python code/bornholdt_2d/run_baseline.py
-This will: a csv file called "lattice_data_results_50000.csv" in the data folder.
-Example with parameters:
-python code/bornholdt_2d/run_baseline.py --steps 50000 --burn_in 10000  --thin 1 --L 32 --J 1.0 --alpha 8.0  --T 1.5 --seed 0
+----------
 
-To generate the figures:
-python code/bornholdt_2d/plot_paper_figures.py --data data/lattice_data_results_50000.csv
-This will save the figures in the results folder.
+## How to Run
 
-To visualize the lattice:
-python code/bornholdt_2d/visualize_lattice.py
-(Override parameters if desired: --L 64 --alpha 8 --T 1.2)
+### 1. Run a baseline lattice simulation
+
+From the repository root:
+
+`python code/bornholdt_2d/run_baseline.py` 
+
+This generates a CSV file (by default  
+`lattice_data_results_50000.csv`) in the `data/` folder.
+
+**Example with explicit parameters:**
+
+`python code/bornholdt_2d/run_baseline.py \
+  --steps 50000 \
+  --burn_in 10000 \
+  --thin 1 \
+  --L 32 \
+  --J 1.0 \
+  --alpha 8.0 \
+  --T 1.5 \
+  --seed 0` 
+
+----------
+
+### 2. Generate paper-style figures
+
+`python code/bornholdt_2d/plot_paper_figures.py \
+  --data data/lattice_data_results_50000.csv` 
+
+Figures are saved to the `results/` folder.
+
+----------
+
+### 3. Visualize the lattice dynamics (optional)
+
+`python code/bornholdt_2d/visualize_lattice.py` 
+
+Optional parameter overrides:
+
+`python code/bornholdt_2d/visualize_lattice.py --L 64 --alpha 8 --T 1.2` 
+
+----------
+
+## Notes on Parameter Choices
+
+-   Intermittent, market-like dynamics is typically observed for temperatures **below but close to the critical temperature**.
+    
+-   Larger lattice sizes and longer runs improve statistics but increase runtime.
+    
+-   The provided defaults are chosen to balance qualitative accuracy and computational cost.

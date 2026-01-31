@@ -11,13 +11,13 @@ def main() -> None:
     ap = argparse.ArgumentParser(
         description="Run Bornholdt2D baseline and save a CSV in ./data/."
     )
-    ap.add_argument("--steps", type=int, default=100_000,
-                    help="Total time steps (underscores allowed: 100_000).")
+    ap.add_argument("--steps", type=int, default=50_000,
+                    help="Total time steps (underscores allowed: 50_000).")
     ap.add_argument("--L", type=int, default=32)
     ap.add_argument("--J", type=float, default=1.0)
     ap.add_argument("--T", type=float, default=1.5)
     ap.add_argument("--alpha", type=float, default=8.0)
-    ap.add_argument("--burn_in", type=int, default=10_000)
+    ap.add_argument("--burn_in", type=int, default=5_000)
     ap.add_argument("--thin", type=int, default=1)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--eps", type=float, default=1e-6,

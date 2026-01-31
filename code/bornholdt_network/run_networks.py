@@ -69,7 +69,7 @@ def run_one(topology: str, args) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Run Bornholdt model on ER/BA/WS networks and save CSVs in ./data/.")
     ap.add_argument("--steps", type=int, default=50_000)
-    ap.add_argument("--burn_in", type=int, default=1_000)
+    ap.add_argument("--burn_in", type=int, default=5_000)
     ap.add_argument("--thin", type=int, default=1)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--eps", type=float, default=1e-6)
