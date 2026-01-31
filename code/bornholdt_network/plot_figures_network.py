@@ -53,6 +53,8 @@ def resolve_default_data_path(explicit: str | None) -> str:
 
 
 def ensure_required_columns(data, required):
+    """Validate that the loaded structured array contains all required column names."""
+
     names = set(data.dtype.names or [])
     missing = required - names
     if missing:
@@ -91,6 +93,8 @@ def autocorrelation(x, max_lag):
 
 
 def window_by_t(data, t_min, t_max):
+    """Return a time-windowed view of the data for t in [t_min, t_max] (inclusive)."""
+
     t = data["t"]
     mask = (t >= t_min) & (t <= t_max)
     return data[mask]
@@ -205,6 +209,8 @@ def plot_fig5(data, outdir, t_min=10000, t_max=20000, prefix="network_"):
 # MAIN
 # ---------------------------------------------------------------------
 def main():
+    """CLI entry point: load a network-run CSV, validate columns, and generate paper-style figures."""
+
     ap = argparse.ArgumentParser(description="Plot network figures from run_network/run_networks CSV output.")
     ap.add_argument("--data", type=str, default=None,
                     help="Path to CSV produced by run_network/run_networks.")
