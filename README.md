@@ -53,44 +53,20 @@ Our guiding question:
 ## Model (Bornholdt-type two-scale Ising market)
 
 ### Agent state
-Each agent \(i = 1,\dots,N\) has:  
-- Decision spin \(S_i(t) \in \{+1,-1\}\) (buy / sell)  
-- Strategy spin \(C_i(t) \in \{+1,-1\}\) (fundamentalist / chartist label)  
+Each agent carries two binary states:  
+- a **decision state** (buy vs sell), and  
+- a **strategy label** (interpretable as “chartist vs fundamentalist” in the Bornholdt framing).  
 
-### Magnetization
-\[  
-M(t) = \frac{1}{N}\sum_{j=1}^N S_j(t)  
-\]  
-
-### Local field (two scales: local herding + global contrarian)  
-Baseline (homogeneous \(\alpha\)):  
-\[
-h_i(t) = \sum_{j=1}^N J_{ij} S_j(t)\;-\;\alpha\, C_i(t)\, M(t)  
-\]  
-
-**Network vs lattice coupling**  
-- Lattice: \(J_{ij}=J\) only for nearest neighbors  
-- Network: \(J_{ij}=J A_{ij}\), where \(A_{ij}\) is the adjacency matrix  
-
-### Spin update (heat-bath / logistic rule)
-Let \(\beta = 1/T\) be inverse temperature:  
-\[
-\mathbb{P}\big(S_i(t{+}1)=+1\;\big|\;h_i(t)\big)
-= \frac{1}{1+\exp\{-2\beta h_i(t)\}}
-\]  
-(and \(S_i(t{+}1)=-1\) otherwise)  
+### Update rule 
+At each step, agents update asynchronously using a stochastic (“heat-bath”-style) choice rule where the probability to buy/sell depends on an effective pressure composed of:  
+- a local neighbor influence term (herding), plus  
+- a global market pressure term linked to the current market-wide imbalance (contrarian pressure).  
 
 ### Strategy switching
-\[
-C_i(t{+}1) = -C_i(t) \quad \text{if}\quad C_i(t)\, S_i(t)\, M(t) < 0
-\]
-(otherwise \(C_i(t{+}1)=C_i(t)\))  
+Agents can flip their strategy label based on whether their current strategy is “misaligned” with the market situation (i.e., whether it is disadvantageous given the market’s current imbalance).  
 
-### Returns (from magnetization)
-We define log returns from changes in market polarization:  
-\[
-r(t)=\ln |M(t)|-\ln |M(t{-}1)|
-\]  
+### Returns and observables  
+We convert the model’s aggregate market imbalance into a price-like series and define **returns from changes in that aggregate state** (following the standard Bornholdt/Yamano-style construction). 
 
 ## Extensions
 
@@ -123,7 +99,7 @@ Note: These are primarily qualitative checks from simulation outputs. We did not
 
 ### H1 — Criticality & Frustration
 **Claim:** There exists a transition between ordered (herding-dominated) and disordered market regimes as coupling strength or temperature is varied, characterized by peaks in susceptibility and volatility clustering.
-**Outcome:** 
+**Outcome:**  
 
 **Verdict:** Do not reject (qualitative support).  
 
@@ -137,7 +113,7 @@ At the same time, topology appears to modulate the dynamics (e.g., the sharpness
 
 ### H3 — Agent heterogeneity  
 **Claim:** Heterogeneity in contrarian sensitivity \(\alpha_i\) changes market dynamics and stylized facts.  
-**Outcome:** 
+**Outcome:**  
 
 **Verdict:** Do not reject.  
 
@@ -150,4 +126,8 @@ At the same time, topology appears to modulate the dynamics (e.g., the sharpness
 Parameter exploration was limited. Next steps:  
 - systematic sweeps over temperature/coupling and network parameters,  
 - finite-size scaling to better locate phase transitions and universality classes,  
-- implement endogenous feedback to test self-organized regime switching more directly.  
+- implement endogenous feedback to test self-organized regime switching more directly.
+
+## References
+Expectation bubbles in a spin model of markets: Intermittency from frustration across scales - https://arxiv.org/abs/cond-mat/0105224 
+Bornholdt’s spin model of a market dynamics in high dimensions - https://arxiv.org/abs/cond-mat/0110279 
