@@ -28,6 +28,12 @@ class BornholdtNetwork:
     """
 
     def __init__(self, G, J: float = 1.0, alpha: float = 4.0, T: float = 1.5, seed: int | None = None):
+        """Initialize the Bornholdt spin-market model on a NetworkX graph.
+
+        Validates node labels (expects 0..N-1), initializes decision spins S and strategy spins C,
+        sets RNG/parameters, caches aggregate sums, and precomputes neighbor lists for speed.
+        """
+
         self.G = G
         self.N = int(nx.number_of_nodes(G))
 
@@ -64,9 +70,11 @@ class BornholdtNetwork:
     # Baseline-compatible names (so your runner/plotter don't change)
     # ---------------------------------------------------------------------
     def magnetization_M(self) -> float:
+        """Return the current magnetization (mean of decision spins S)."""
         return self._sumS / self.N
 
     def mean_strategy_C(self) -> float:
+        """Return the mean strategy spin C (summary of chartist vs fundamentalist balance)."""
         return float(self.C.mean())
 
     # ---------------------------------------------------------------------
@@ -74,6 +82,11 @@ class BornholdtNetwork:
     # ---------------------------------------------------------------------
     @staticmethod
     def _heat_bath_prob_up(beta: float, h: float) -> float:
+        """Return the heat-bath probability of setting S=+1 given inverse temperature beta and field h.
+        
+        Uses simple clipping for numerical stability when beta*h is large in magnitude.
+        """
+
         x = 2.0 * beta * h
         if x >= 50.0:
             return 1.0
@@ -82,18 +95,24 @@ class BornholdtNetwork:
         return 1.0 / (1.0 + np.exp(-x))
 
     def _neighbors_sum_S(self, node: int) -> int:
+        """Return the sum of decision spins over the neighbors of a given node."""
+
         nbrs = self.neigh[node]
         if nbrs.size == 0:
             return 0
         return int(self.S[nbrs].sum())
 
     def _local_field(self, node: int, M_now: float) -> float:
+        """Compute the effective local field for a node from neighbor herding and global contrarian pressure."""
+
         return self.J * self._neighbors_sum_S(node) - self.alpha * self.C[node] * M_now
 
     # ---------------------------------------------------------------------
     # Fully asynchronous single-node update (S then C immediately)
     # ---------------------------------------------------------------------
     def _update_node(self, node: int) -> None:
+        """Perform one fully-asynchronous node update (update S, then update C) and maintain cached aggregates."""
+
         # magnetization BEFORE updating this node
         M_before = self._sumS / self.N
 
@@ -137,6 +156,8 @@ class BornholdtNetwork:
     # ---------------------------------------------------------------------
     @staticmethod
     def returns_from_magnetization(M_series: np.ndarray, eps: float = 1e-6) -> np.ndarray:
+        """Compute log returns from a magnetization series using |M| with a small epsilon to avoid log(0)."""
+
         M_series = np.asarray(M_series, dtype=float)
         if M_series.size < 2:
             return np.array([], dtype=float)
