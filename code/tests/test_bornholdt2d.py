@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 
-# ✅ 如果你的文件名不是 bornholdt_model.py，请改这一行
 from bornholdt_2d.bornholdt_model import Bornholdt2D
 
 
@@ -105,3 +104,4 @@ def test_reproducibility_with_seed():
     assert np.allclose(out1["M"], out2["M"])
     assert np.allclose(out1["frac_chartist"], out2["frac_chartist"])
     assert np.allclose(out1["r"], out2["r"])
+
