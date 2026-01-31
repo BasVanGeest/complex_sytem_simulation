@@ -33,6 +33,14 @@ initial_show = "S"
 # ============================================================
 
 def main():
+    """Animate the heterogeneous-α Bornholdt lattice model.
+
+    Interactive keys:
+    - 't' toggles the displayed grid between S (buy/sell) and C (strategy).
+    - 'a' toggles the displayed grid to the quenched α-field.
+    Shows summary stats (M, strategy fractions, α stats) in an on-plot text box.
+    """
+
     model = Bornholdt2D_heterogeneity(
         L=L,
         J=J,
@@ -51,6 +59,8 @@ def main():
     ax.set_yticks([])
 
     def grid():
+        """Return the 2D array currently selected for display (S, C, or mean-field)."""
+
         if state["show"] == "S":
             return model.S
         if state["show"] == "C":
@@ -58,6 +68,8 @@ def main():
         return model.alpha   # "A"
 
     def title():
+        """Return a plot title string matching the current display mode (S, C, or α)."""
+
         if state["show"] == "S":
             return "Heterogeneous-α Bornholdt: S (buy/sell)   [t: S/C, a: α]"
         if state["show"] == "C":
@@ -81,6 +93,8 @@ def main():
     )
 
     def refresh():
+        """Refresh the image data, title, and colormap/clim based on the current display mode."""
+
         im.set_data(grid())
         ax.set_title(title())
         if state["show"] in ("S", "C"):
@@ -92,6 +106,8 @@ def main():
             im.set_clim(a.min(), a.max())
 
     def on_key(event):
+        """Handle key presses to switch between S/C view"""
+
         if event.key == "t":
             state["show"] = "C" if state["show"] == "S" else "S"
             refresh()
@@ -104,6 +120,8 @@ def main():
     fig.canvas.mpl_connect("key_press_event", on_key)
 
     def update(_):
+        """Animation callback: advance the simulation, refresh the plot, and update the stats overlay."""
+
         for _ in range(steps_per_frame):
             model.sweep()
             t["step"] += 1
