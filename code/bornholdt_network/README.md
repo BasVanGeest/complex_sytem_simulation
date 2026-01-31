@@ -60,8 +60,6 @@ Stdlib:
 
 Scripts assume a writable `data/` and `paper_figures_network/` directory (created automatically when run).
 
----
-
 ## Run Order
 
 Run Order (explicit, showing which file to call)
