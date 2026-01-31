@@ -58,11 +58,9 @@ Stdlib:
 - `argparse`, `os`, `json`, `io`
 - randomness handled via NumPy RNG
 
-Scripts assume a writable `data/` and `paper_figures_network/` directory (created automatically when run).
+Scripts assume a writable `data/` and `paper_figures_network/` directory.
 
 ## Run Order
-
-Run Order (explicit, showing which file to call)
 
 Simulate with run_networks.py (uses model_network.py to generate network_run.csv
 Generate figures from the simulation CSV with plot_figures_network.py, network_run.csv --outdir paper_figures_network --prefix network_
