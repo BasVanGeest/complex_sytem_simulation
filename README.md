@@ -34,9 +34,8 @@ Saved PNGs used in the write-up/paper-style presentation:
 - Structured as a module (“__init__.py”; e.g. “pip install .” works) (Good)
 - Documentation generated from docstrings (Good)
 
-###
+## Main Idea
 
-### Main idea
 Financial markets exhibit robust fat-tailed returns, volatility clustering, and intermittent regime shifts that are not well captured by equilibrium or fully rational-agent models.  
 In this project and code nbase we study a spin-based market model (Bornholdt-type), where traders are binary spins that interact via:  
 
