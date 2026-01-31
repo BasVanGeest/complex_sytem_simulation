@@ -69,26 +69,33 @@ class Bornholdt2D_heterogeneity:
 
     # ---- observables ----
     def M(self) -> float:
+        """Return the current magnetization (mean decision spin)."""
         return self._sumS / self.N
 
     def frac_chartist(self) -> float:
+         """Return the current fraction of chartists (C == -1)."""
         return self._n_chartist / self.N
 
     def frac_fundamentalist(self) -> float:
+        """Return the current fraction of fundamentalists (C == +1)."""
         return 1.0 - self.frac_chartist()
 
     # ---- lattice helpers ----
     def _nn_sumS(self, i, j) -> int:
+         """Sum the four nearest-neighbor decision spins (periodic boundaries)."""
         L = self.L
         S = self.S
         return S[(i + 1) % L, j] + S[(i - 1) % L, j] + S[i, (j + 1) % L] + S[i, (j - 1) % L]
 
     def _h(self, i, j, M_now) -> float:
-        # NOTE: heterogeneous alpha_ij
+        """Compute the local field at site (i, j) given the current magnetization estimate."""
         return self.J * self._nn_sumS(i, j) - self.alpha[i, j] * self.C[i, j] * M_now
 
     @staticmethod
     def _p_up(beta, h) -> float:
+        """Return heat-bath probability of setting S=+1 for given beta and local field h.
+        Uses simple clipping for numerical stability when 2*beta*h is large in magnitude.
+        """
         x = 2.0 * beta * h
         if x >= 50.0:
             return 1.0
@@ -98,6 +105,13 @@ class Bornholdt2D_heterogeneity:
 
     # ---- single-site asynchronous update ----
     def _update_site(self, i, j) -> None:
+        """Perform one asynchronous update at lattice site (i, j).
+        
+        Steps:
+        1) Heat-bath update of the decision spin S[i,j].
+        2) Immediate strategy update of C[i,j] using the Bornholdt flip rule.
+        Cached sums (_sumS, _sumC, _n_chartist) are maintained incrementally.
+        """
         M_before = self._sumS / self.N
 
         # 1) heat-bath update S_ij
@@ -123,6 +137,8 @@ class Bornholdt2D_heterogeneity:
                 self._n_chartist += 1
 
     def sweep(self) -> None:
+        """Perform one Monte Carlo sweep (visit each site once in random order)."""
+
         order = self.rng.permutation(self.N)
         L = self.L
         for k in order:
@@ -130,6 +146,8 @@ class Bornholdt2D_heterogeneity:
             self._update_site(i, j)
 
     def simulate(self, n_sweeps, burn_in=0, thin=1, eps=1e-6):
+    """Run the model for a number of sweeps and return time series observables."""
+
         if n_sweeps <= 0:
             raise ValueError("n_sweeps must be > 0.")
         if burn_in < 0 or burn_in >= n_sweeps:
