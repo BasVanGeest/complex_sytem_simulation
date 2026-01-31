@@ -45,10 +45,10 @@ Standard library: `argparse`, `os`, `re`, `io`
 
 ## Run Order
 
-Generate heterogeneity data: intermediate_heterogeneity.csv 
-Key options: --L (size), --steps (sweeps), --burn_in, --thin, --alpha_mean/std/min, --seed.
-CSV columns: t, M, r, abs_r, C_mean, chartist_frac, fundamentalist_frac.
-Ensure baseline CSV intermediate.csv exists (comes from baseline model in code/bornholdt_2d).
-Make overlay figures: plot_overlap_figures.py
-Outputs: overlap_fig2_returns_timeseries.png, overlap_fig3_ccdf_abs_returns.png, overlap_fig4_volatility_acf.png, heterogeneity_alpha_hist.png.
-Optional live visualization: visualize_latt_heterogeneity.py.
+Generate heterogeneity data: intermediate_heterogeneity.csv \
+Key options: --L (size), --steps (sweeps), --burn_in, --thin, --alpha_mean/std/min, --seed. \
+CSV columns: t, M, r, abs_r, C_mean, chartist_frac, fundamentalist_frac. \
+Ensure baseline CSV intermediate.csv exists (comes from baseline model in code/bornholdt_2d). \
+Make overlay figures: plot_overlap_figures.py \
+Outputs: overlap_fig2_returns_timeseries.png, overlap_fig3_ccdf_abs_returns.png, overlap_fig4_volatility_acf.png, heterogeneity_alpha_hist.png. \
+Optional live visualization: visualize_latt_heterogeneity.py. \
