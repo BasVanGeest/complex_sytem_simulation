@@ -1,6 +1,7 @@
 # Complex System Simulation
 
-## Bornholdt / Ising Spin Model of Market Dynamics on Networks (Edoardo Putignano, George Petropoulos, Jiawei Li, Bas van Geest)
+## Bornholdt / Ising Spin Model of Market Dynamics on Networks 
+### Edoardo Putignano, George Petropoulos, Jiawei Li, Bas van Geest
 
 ## Repo layout 
 
