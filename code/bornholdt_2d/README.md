@@ -1,7 +1,6 @@
 # Bornholdt Baseline Spin-Market Model
 
-This repository contains a 2D Bornholdt spin-market model implemented on an L×L periodic lattice with asynchronous single site heat-bath updates, plus scripts to run simulations and reproduce paper-style figures.  
-We recommend not simulating more than 200,000 steps to keep run time under 30 minutes.
+This repository contains a 2D Bornholdt spin-market model implemented on an L×L periodic lattice with asynchronous single site heat-bath updates, plus scripts to run simulations and reproduce paper-style figures. We recommend not simulating more than 200,000 steps to keep run time under 30 minutes.
 
 ## Folder Overview
 
