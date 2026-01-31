@@ -1,7 +1,7 @@
 # Bornholdt Heterogeneity Model
 
 Asynchronous 2D Bornholdt market-spin model with **quenched heterogeneous** \(\alpha_{ij}\).  
-The heterogeneity field \(\alpha_{ij}\) is drawn from a Normal(mean, std) distribution and clipped to be > 0**, then held fixed for the full simulation.
+The heterogeneity field \(\alpha_{ij}\) is drawn from a Normal(mean, std) distribution and clipped to be > 0, then held fixed for the full simulation.
 
 Produces time series of magnetization, and strategy composition, plus scripts for overlay plots and interactive lattice animation.
 
@@ -28,8 +28,8 @@ Produces time series of magnetization, and strategy composition, plus scripts fo
 
 - **`visualize_latt_heterogeneity.py`**  
   Interactive Matplotlib animation of the lattice fields:
-  - **`t`** toggles **S ↔ C**
-  - **`a`** toggles **α view**
+  - `t` toggles S ↔ C
+  - `a` toggles α view
 
 - **`__init__.py`**  
   Empty marker so the directory can be imported as a package.
