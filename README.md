@@ -1,6 +1,6 @@
-# complex_sytem_simulation
+# Complex System Simulation
 
-## Bornholdt / Ising Spin Model of Market Dynamics on Networks
+## Bornholdt / Ising Spin Model of Market Dynamics on Networks (Edoardo Putignano, George Petropoulos, Jiawei Li, Bas van Geest)
 
 ## Repo layout 
 
@@ -26,7 +26,7 @@ Saved PNGs used in the write-up/paper-style presentation:
 
 ### Outputs
 - **Simulation CSVs** in `data/` are the inputs to the plotting scripts.  
-- **PNGs** in `paper_figures/` and `paper_figures_network/` are the generated figures (lattice + network variants).  
+- **PNGs** in `paper_figures/` and `paper_figures_network/` are the generated figures (lattice + network variants).
 
 ### Bonuses
 - You have roughly 5-10% assert statements (currently under)
