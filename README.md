@@ -71,9 +71,6 @@ We convert the model’s aggregate market imbalance into a price-like series and
 
 ### 1) Agent heterogeneity (random \(\alpha_i\))
 Instead of a single \(\alpha\), assign each agent a sensitivity \(\alpha_i\) drawn from a fixed distribution at initialization.  
-\[
-h_i(t) = \sum_{j=1}^N J_{ij} S_j(t)\;-\;\alpha_i\, C_i(t)\, M(t)
-\]  
 Interpretation:  
 - large \(\alpha_i\): strongly contrarian agents  
 - small \(\alpha_i\): weakly sensitive agents
