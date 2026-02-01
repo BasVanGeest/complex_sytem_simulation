@@ -23,11 +23,11 @@ Throughout, we deliberately follow the model definitions, update rules, and obse
 
 The project is guided by the following research questions, formulated to mirror the structure and claims of the reference literature while remaining accessible to numerical investigation:
 
--   **H1: Criticality and frustration.** Does the competition between local herding and global contrarian pressure induce a transition between frozen, intermittent, and disordered market regimes as temperature or coupling strength is varied?
+-   **H1: Criticality and frustration.** As temperature or coupling strength increases, the model undergoes a regime transition due to frustration between local herding and global contrarian pressure. 
     
--   **H2: Role of interaction topology.** At fixed average degree, how does changing the interaction topology (2D lattice vs. Erdős–Rényi, Watts–Strogatz, and Barabási–Albert networks) affect regime stability, intermittency, and volatility clustering?
+-   **H2: Role of interaction topology.** Interaction topology changes the location and sharpness of critical regions altering regime stability and volatily clustering.  
     
--   **H3: Agent heterogeneity.** How does heterogeneity in agents’ contrarian sensitivity (lpha_i) influence regime persistence, intermittency, and the emergence of stylized market facts?
+-   **H3: Agent heterogeneity.** Heterogeneous contrarian sensitives reduce regime persistence when compared to the baseline. 
     
 
 ----------
@@ -64,7 +64,7 @@ Generated figures used in the report-style analysis:
 
 -   return time series
     
--   CCDFs of absolute returns |r|
+-   CCDFs of absolute returns $$|r|$$
     
 -   volatility autocorrelations
     
@@ -118,9 +118,9 @@ Our project investigates how robust this mechanism is when:
 
 Each agent i carries two binary variables:
 
--   **Decision spin**: (S_i(t) \in {+1, -1}), representing buy/sell pressure.
+-   **Decision spin**: $$(S_i(t) \in {+1, -1})$$, representing buy/sell pressure.
     
--   **Strategy spin**: (C_i(t) \in {+1, -1}), interpreted as:
+-   **Strategy spin**: $$(C_i(t) \in {+1, -1})$$, interpreted as:
     
     -   (+1): _fundamentalist_ (contrarian to the majority)
         
@@ -137,7 +137,7 @@ $$
 
 where:
 
--   (J_{ij} = J) for nearest neighbors (2D lattice), zero otherwise,
+-   $$(J_{ij} = J)$$ for nearest neighbors (2D lattice), zero otherwise,
     
 -   the first term induces **local ferromagnetic ordering** (herding),
     
@@ -152,7 +152,7 @@ $$
 P(S_i(t+1) = +1) = \frac{1}{1 + e^{-2 \beta h_i(t)}}  
 $$
 
-where (\beta = 1/T) plays the role of an inverse temperature controlling stochasticity.
+where $$(\beta = 1/T)$$ plays the role of an inverse temperature controlling stochasticity.
 
 ### Strategy Switching
 
@@ -193,14 +193,14 @@ This definition follows both Bornholdt (2001) and Yamano (2002), enabling direct
 
 ### 1) Agent Heterogeneity
 
-To relax the assumption of identical agents, we assign each agent a **agent-specific contrarian strength (fixed over time)** (\alpha_i).
+To relax the assumption of identical agents, we assign each agent a **agent-specific contrarian strength (fixed over time)** $$(\alpha_i)$$.
 
--   (\alpha_i \sim \mathcal{N}(\mu_\alpha, \sigma_\alpha)), drawn at initialization
+-   $$(\alpha_i \sim \mathcal{N}(\mu_\alpha, \sigma_\alpha))$$, drawn at initialization
     
--   **Constraint:** (\alpha_i > 0)
+-   **Constraint:** $$(\alpha_i > 0)$$
     
 
-Negative (\alpha_i) would correspond to agents that _reinforce_ global trends rather than opposing them, implying qualitatively different and economically unrealistic strategies. For this reason, the distribution is truncated to strictly positive values.
+Negative $$(\alpha_i)$$ would correspond to agents that _reinforce_ global trends rather than opposing them, implying qualitatively different and economically unrealistic strategies. For this reason, the distribution is truncated to strictly positive values.
 
 This extension allows us to study how diversity in agent sensitivity affects volatility clustering, regime switching, and tail behavior.
 
@@ -263,23 +263,23 @@ Introducing fixed (time-independent) heterogeneity in agents’ contrarian sensi
 
 ### Network topology
 
-Replacing the regular lattice with complex interaction networks likewise preserves the core stylized facts. Across Erdős–Rényi, Watts–Strogatz, and Barabási–Albert networks, we consistently observe heavy-tailed returns and clustered volatility. Network topology primarily modulates quantitative aspects of the dynamics—such as the sharpness of bursts, the duration of ordered phases, and the strength of correlations—rather than fundamentally changing the qualitative behavior.
+Replacing the regular lattice with complex interaction networks likewise preserves the core stylized facts. Across Erdős–Rényi, Watts–Strogatz, and Barabási–Albert networks, we consistently observe heavy-tailed returns and clustered volatility. Network topology primarily modulates quantitative aspects of the dynamics—such as the sharpness of bursts, the duration of ordered phases, and the strength of correlations—rather than fundamentally changing the qualitative behavior. Across the specific topologies we observed consistent behavior but clear quantitative differences. Watts–Strogatz appeared the most lattice-like as volatility bursts were more sharply separated by calmer periods, and ordered phases persisted longer before abrupt reorganizations. This is consistent with small world shortcuts reinforcing coordination and keeping local structure. Erdős–Rényi preserved the same stylized facts but looked more mean-field in the sense that fluctuations were less tied to long coherent regimes. When we varied the average degree in ER, the CCDF of ∣r∣ visibly shifted, thus confirming that connectivity can tune tail heaviness. Barabási–Albert retained heavy tails and clustered volatility but the presence of hubs plausibly changes the pathway of amplification. Large events can propagate through highly connected nodes leading to a different mechanism for bursts than to WS’s small-world regime persistence.
 
 ### Synthesis
 
-Taken together, our results support the view that **market-like complexity can emerge robustly from minimal microscopic rules**. Frustration between local imitation and global contrarian forces is the primary driver of intermittency and volatility clustering, while heterogeneity and topology shape how these effects manifest in time. The persistence of stylized facts across extensions suggests that the mechanism is not lattice-specific, nor dependent on agent homogeneity, but instead reflects a generic feature of frustrated multi-agent systems operating near criticality.
+Taken together, our results support the view that **market-like complexity can emerge robustly from minimal microscopic rules**. Frustration between local imitation and global contrarian forces is the primary driver of intermittency and volatility clustering, while heterogeneity and topology shape how these effects manifest in time. The persistence of stylized facts across extensions suggests that the mechanism is not lattice-specific, nor dependent on agent homogeneity, but instead reflects a generic feature of frustrated multi-agent systems operating near criticality. Importantly, our results are primarily demonstrative rather than inferential as most conclusions come from a limited set of parameter choices and a small number of runs, so we cannot quantify run-to-run variability with confidence intervals or error bars.
 
 ----------
 
 ## Limitations and Outlook
 
--   Parameter exploration was limited; no exhaustive sweeps or finite-size scaling were performed.
+-   Parameter exploration was limited; no exhaustive sweeps or finite-size scaling were performed.  
+-   Increase experimental and statisical robustness. Run each condition with multiple random seeds and for networks multiple graph realizations, then report each metric as mean $$\pm           95\%$$ CI using a bootstrap / batching method to account for autocorrelation.  
+-   Future work could include:  
     
--   Future work could include:
-    
-    -   systematic phase-diagram mapping,
+    -   systematic phase-diagram mapping,  
         
-    -   finite-size scaling and universality analysis
+    -   finite-size scaling and universality analysis  
         
 
 ----------
