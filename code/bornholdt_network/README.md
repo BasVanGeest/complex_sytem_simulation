@@ -111,6 +111,8 @@ Example with explicit parameters:
 
 The number of nodes is always set to N=L×LN = L \times LN=L×L to match the lattice baseline.
 
+To obtain the pictures used in the presentation: use default parameter.
+
 ----------
 
 ### 2. Generate figures from a network run

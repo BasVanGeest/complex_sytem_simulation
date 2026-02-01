@@ -11,7 +11,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(
         description="Run Bornholdt2D baseline and save a CSV in ./data/."
     )
-    ap.add_argument("--steps", type=int, default=50_000,
+    ap.add_argument("--steps", type=int, default=100_000,
                     help="Total time steps (underscores allowed: 50_000).")
     ap.add_argument("--L", type=int, default=32)
     ap.add_argument("--J", type=float, default=1.0)

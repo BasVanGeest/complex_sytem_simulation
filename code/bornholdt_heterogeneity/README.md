@@ -66,12 +66,13 @@ The simulation should run for ≥ 20,000 steps.
 The first 10,000 steps act as burn-in, and multiple plots are evaluated using data from steps 10,000 to 20,000. Runs shorter than this will not reproduce the intended results.
 
 ### 1. Run a heterogeneous simulation
+To get the plots used in the presentation, please use default parameters
 
-`python code/bornholdt_heterogeneity/run_heterogeneity.py --steps 50000` 
+`python code/bornholdt_heterogeneity/run_heterogeneity.py --steps 100000` 
 
 This generates a CSV file named:
 
-`heterogeneity_data_results_50000.csv` 
+`heterogeneity_data_results_100000.csv` 
 
 in the `data/` folder.
 

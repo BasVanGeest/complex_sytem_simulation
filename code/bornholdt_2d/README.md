@@ -82,18 +82,18 @@ The simulation should run for ≥ 20,000 steps.
 The first 10,000 steps act as burn-in, and multiple plots are evaluated using data from steps 10,000 to 20,000. Runs shorter than this will not reproduce the intended results.
 
 ### 1. Run a baseline lattice simulation
-
+To reproduce the images in the presentation use default parameter.
 From the repository root:
 
 `python code/bornholdt_2d/run_baseline.py` 
 
 This generates a CSV file (by default  
-`lattice_data_results_50000.csv`) in the `data/` folder.
+`lattice_data_results_100000.csv`) in the `data/` folder.
 
 **Example with explicit parameters:**
 
 `python code/bornholdt_2d/run_baseline.py \
-  --steps 50000 \
+  --steps 100000 \
   --burn_in 10000 \
   --thin 1 \
   --L 32 \
@@ -107,7 +107,7 @@ This generates a CSV file (by default
 ### 2. Generate paper-style figures
 
 `python code/bornholdt_2d/plot_paper_figures.py \
-  --data data/lattice_data_results_50000.csv` 
+  --data data/lattice_data_results_100000.csv` 
 
 Figures are saved to the `results/` folder.
 
