@@ -7,8 +7,8 @@ The tests are intentionally lightweight and fast: they verify model correctness,
 # How to Run the Tests (IMPORTANT)
 You must run pytest from inside the code/ directory, and you must use Python’s module invocation.
 Correct procedure:From the repository root:
-cd code
-python -m pytest .
+- cd code
+- python -m pytest .
 
 # Test Files Overview
  - test_bornholdt2d.py
