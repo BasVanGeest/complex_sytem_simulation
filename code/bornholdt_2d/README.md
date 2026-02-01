@@ -77,6 +77,10 @@ No external data files are required. All outputs are generated locally.
 
 ## How to Run
 
+Important:
+The simulation should run for ≥ 20,000 steps.
+The first 10,000 steps act as burn-in, and multiple plots are evaluated using data from steps 10,000 to 20,000. Runs shorter than this will not reproduce the intended results.
+
 ### 1. Run a baseline lattice simulation
 
 From the repository root:

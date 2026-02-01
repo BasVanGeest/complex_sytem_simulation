@@ -61,6 +61,10 @@ Standard library modules: `argparse`, `os`, `re`, `io`
 
 ## How to Run
 
+Important:
+The simulation should run for ≥ 20,000 steps.
+The first 10,000 steps act as burn-in, and multiple plots are evaluated using data from steps 10,000 to 20,000. Runs shorter than this will not reproduce the intended results.
+
 ### 1. Run a heterogeneous simulation
 
 `python code/bornholdt_heterogeneity/run_heterogeneity.py --steps 50000` 
