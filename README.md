@@ -10,7 +10,7 @@
 
 This project implements, reproduces, and extends the seminal spin-based market models introduced by **Stefan Bornholdt (2001)** and extended by **Takuya Yamano (2002)**. Our primary goal is twofold:
 
-1.  **Baseline reproduction**: faithfully reproduce the qualitative stylized facts reported in the reference papers—fat-tailed return distributions, volatility clustering, intermittent regime switching—using the original 2D lattice Bornholdt model.
+1.  **Baseline reproduction**: faithfully reproduce the qualitative stylized facts reported in the reference papers-fat-tailed return distributions, volatility clustering, intermittent regime switching-using the original 2D lattice Bornholdt model.
     
 2.  **Systematic extensions**: extend the same microscopic dynamics to (i) heterogeneous agents and (ii) complex interaction topologies, and **compare all extensions against the baseline using the same observables and figures** as in the reference literature.
     
@@ -38,13 +38,13 @@ The project is guided by the following research questions, formulated to mirror 
 
 Python modules implementing the model and experiments:
 
--   `bornholdt_2d/` — baseline 2D lattice model, runners, and plotting scripts
+-   `bornholdt_2d/` - baseline 2D lattice model, runners, and plotting scripts
     
--   `bornholdt_network/` — network-based models (Erdős–Rényi, Watts–Strogatz, Barabási–Albert)
+-   `bornholdt_network/` - network-based models (Erdős–Rényi, Watts–Strogatz, Barabási–Albert)
     
--   `bornholdt_heterogeneity/` — lattice model with fixed agent heterogeneity (assigned randomly at initialization)
+-   `bornholdt_heterogeneity/` - lattice model with fixed agent heterogeneity (assigned randomly at initialization)
     
--   `tests/` — pytest suites testing invariants, reproducibility, and basic consistency
+-   `tests/` - pytest suites testing invariants, reproducibility, and basic consistency
     
 
 Each subpackage (`bornholdt_2d/`, `bornholdt_heterogeneity/`, `bornholdt_network/`, `tests/`) contains its own README file with detailed instructions on how to run the corresponding simulations or tests, including recommended numbers of Monte Carlo sweeps for reliable results.
@@ -92,7 +92,7 @@ These features support reproducibility, maintainability, and ease of extension.
 
 ## Scientific Motivation
 
-Real financial markets display robust empirical regularities—fat-tailed returns, clustered volatility, and intermittent regime shifts—that are not well explained by equilibrium or fully rational-agent models.
+Real financial markets display robust empirical regularities-fat-tailed returns, clustered volatility, and intermittent regime shifts-that are not well explained by equilibrium or fully rational-agent models.
 
 The Bornholdt spin model demonstrates that **minimal microscopic rules**, combining:
 
@@ -244,7 +244,7 @@ Our baseline implementation closely follows the formulations of Bornholdt (2001)
 
 As in the reference papers, the temperature (or noise level) plays a crucial role in shaping the collective dynamics. For very low temperatures, stochasticity is strongly suppressed and the system rapidly freezes into ordered configurations, with agents locked into stable clusters and virtually no macroscopic activity. At sufficiently high temperatures, noise dominates the interactions: local order is destroyed, coherent clusters fail to form, and the dynamics becomes effectively chaotic, with no persistent large-scale patterns.
 
-Between these extremes lies an intermediate regime at temperatures below but not too far from the critical temperature $T_c$. In this regime, the system exhibits **intermittent dynamics**: long-lived metastable ordered phases—characterized by coherent agent clusters—are suddenly interrupted by rapid, system-wide reorganization events. Small microscopic fluctuations can then trigger macroscopic rearrangements of the market state, leading to bursts of activity and volatility reminiscent of near-critical behavior.
+Between these extremes lies an intermediate regime at temperatures below but not too far from the critical temperature $T_c$. In this regime, the system exhibits **intermittent dynamics**: long-lived metastable ordered phases-characterized by coherent agent clusters-are suddenly interrupted by rapid, system-wide reorganization events. Small microscopic fluctuations can then trigger macroscopic rearrangements of the market state, leading to bursts of activity and volatility reminiscent of near-critical behavior.
 
 In this regime, we observe:
 
@@ -263,7 +263,7 @@ Introducing fixed (time-independent) heterogeneity in agents’ contrarian sensi
 
 ### Network topology
 
-Replacing the regular lattice with complex interaction networks likewise preserves the core stylized facts. Across Erdős–Rényi, Watts–Strogatz, and Barabási–Albert networks, we consistently observe heavy-tailed returns and clustered volatility. Network topology primarily modulates quantitative aspects of the dynamics—such as the sharpness of bursts, the duration of ordered phases, and the strength of correlations—rather than fundamentally changing the qualitative behavior. Across the specific topologies we observed consistent behavior but clear quantitative differences. Watts–Strogatz appeared the most lattice-like as volatility bursts were more sharply separated by calmer periods, and ordered phases persisted longer before abrupt reorganizations. This is consistent with small world shortcuts reinforcing coordination and keeping local structure. Erdős–Rényi preserved the same stylized facts but looked more mean-field in the sense that fluctuations were less tied to long coherent regimes. When we varied the average degree in ER, the CCDF of ∣r∣ visibly shifted, thus confirming that connectivity can tune tail heaviness. Barabási–Albert retained heavy tails and clustered volatility but the presence of hubs plausibly changes the pathway of amplification. Large events can propagate through highly connected nodes leading to a different mechanism for bursts than to WS’s small-world regime persistence.
+Replacing the regular lattice with complex interaction networks likewise preserves the core stylized facts. Across Erdős–Rényi, Watts–Strogatz, and Barabási–Albert networks, we consistently observe heavy-tailed returns and clustered volatility. Network topology primarily modulates quantitative aspects of the dynamics-such as the sharpness of bursts, the duration of ordered phases, and the strength of correlations-rather than fundamentally changing the qualitative behavior. Across the specific topologies we observed consistent behavior but clear quantitative differences. Watts–Strogatz appeared the most lattice-like as volatility bursts were more sharply separated by calmer periods, and ordered phases persisted longer before abrupt reorganizations. This is consistent with small world shortcuts reinforcing coordination and keeping local structure. Erdős–Rényi preserved the same stylized facts but looked more mean-field in the sense that fluctuations were less tied to long coherent regimes. When we varied the average degree in ER, the CCDF of ∣r∣ visibly shifted, thus confirming that connectivity can tune tail heaviness. Barabási–Albert retained heavy tails and clustered volatility but the presence of hubs plausibly changes the pathway of amplification. Large events can propagate through highly connected nodes leading to a different mechanism for bursts than to WS’s small-world regime persistence.
 
 ### Synthesis
 
