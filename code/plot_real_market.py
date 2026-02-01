@@ -5,16 +5,18 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-# --- Default output: <repo_root>/results (repo_root is parent of this script's folder) ---
+# --- Paths ---
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+
 DEFAULT_OUTDIR = os.path.join(REPO_ROOT, "results")
+DEFAULT_BTC_PATH = os.path.join(REPO_ROOT, "data", "BTC-USD.csv")
+DEFAULT_SPX_PATH = os.path.join(REPO_ROOT, "data", "GSPC.csv")
 
 
 def load_market_csv(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
 
-    
     df = df.rename(columns={"Price": "Date"})
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     df = df[df["Date"].notna()].copy()
@@ -75,11 +77,27 @@ def plot_ccdf_abs_returns(df_ret: pd.DataFrame, title: str, outpath: str):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Plot CCDF + time-series log returns for BTC and S&P500 CSVs.")
-    ap.add_argument("--btc", type=str, required=True, help="Path to BTC CSV (e.g. data/BTC-USD.csv)")
-    ap.add_argument("--spx", type=str, required=True, help="Path to S&P500 CSV (e.g. data/GSPC.csv)")
-    ap.add_argument("--outdir", type=str, default=DEFAULT_OUTDIR,
-                    help="Output folder for PNGs (default: <repo_root>/results)")
+    ap = argparse.ArgumentParser(
+        description="Plot CCDF + time-series log returns for BTC and S&P500 CSVs."
+    )
+    ap.add_argument(
+        "--btc",
+        type=str,
+        default=DEFAULT_BTC_PATH,
+        help="Path to BTC CSV (default: data/BTC-USD.csv)",
+    )
+    ap.add_argument(
+        "--spx",
+        type=str,
+        default=DEFAULT_SPX_PATH,
+        help="Path to S&P500 CSV (default: data/GSPC.csv)",
+    )
+    ap.add_argument(
+        "--outdir",
+        type=str,
+        default=DEFAULT_OUTDIR,
+        help="Output folder for PNGs (default: <repo_root>/results)",
+    )
     args = ap.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
