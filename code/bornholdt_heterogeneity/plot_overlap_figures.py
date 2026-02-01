@@ -164,9 +164,9 @@ def plot_overlay_acf(base: np.ndarray, het: np.ndarray, outpath: str, max_lag: i
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Overlay baseline vs heterogeneity figures.")
-    ap.add_argument("--baseline", type=str, default=os.path.join("data", "lattice_data_results_100000.csv"),
+    ap.add_argument("--baseline", type=str, default=os.path.join("data", "lattice_data_results_50000.csv"),
                     help="Baseline CSV path.")
-    ap.add_argument("--hetero", type=str, default=os.path.join("data", "heterogeneity_data_results_100000.csv"),
+    ap.add_argument("--hetero", type=str, default=os.path.join("data", "heterogeneity_data_results_50000.csv"),
                     help="Heterogeneity CSV path.")
     ap.add_argument("--outdir", type=str, default="results", help="Output directory for figures.")
     ap.add_argument("--tmin", type=int, default=10_000)

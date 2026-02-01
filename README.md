@@ -283,6 +283,13 @@ Taken together, our results support the view that **market-like complexity can e
         
 
 ----------
+## GenAI Usage Statement
+
+Generative AI tools were used as **technical support** during development, mainly for debugging, code organization, file handling (CSV input/output), plotting utilities, and documentation improvements. All core modeling decisions, extensions, and scientific analysis were developed independently.
+
+A detailed and transparent description of how GenAI was used can be found in the accompanying file **`AI_usage_report.md`**.
+
+----------
 
 ## References
 

@@ -140,7 +140,7 @@ def main() -> None:
     ap.add_argument(
         "--data",
         type=str,
-        default=os.path.join("data", "lattice_data_result_100000.csv"),
+        default=os.path.join("data", "lattice_data_result_50000.csv"),
         help="Input CSV path (default: data/lattice_data_result_100000.csv).",
     )
     ap.add_argument("--outdir", type=str, default="results", help="Output directory for figures (default: results).")
